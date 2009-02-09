@@ -1,0 +1,8 @@
+Package: openanpr
+Version: 1.0
+Section: utils
+Maintainer: Bob Mottram <fuzzgun@gmail.com>
+Architecture: all
+Essential: no
+Priority: optional
+Description: This is a utility which may be used to detect vehicle license plates within images
