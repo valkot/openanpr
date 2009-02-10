@@ -10,6 +10,46 @@ platedetection::~platedetection()
 
 }
 
+void platedetection::ColourFilter(
+    unsigned char* img_colour,
+    int img_width, int img_height,
+    unsigned char* filtered)
+{
+	int* histogram = new int[256];
+	int* temp_histogram = new int[256];
+	memset(histogram, 0, 256*sizeof(int));
+	for (int i = (img_width * img_height)-1; i >= 0; i--)
+		histogram[img_colour[i]]++;
+
+	float MeanDark = 0;
+	float MeanLight = 0;
+	float DarkRatio = 0;
+	float threshold =
+		thresholding::GetGlobalThreshold(histogram, 255, 0, temp_histogram, MeanDark, MeanLight, DarkRatio);
+
+	float threshold_upper = MeanLight - ((MeanLight - threshold)* 0.2f);
+
+	processimage::yellowFilter(img_colour, img_width, img_height, filtered);
+
+	for (int i = (img_width * img_height*3)-3; i >= 0; i-=3)
+	{
+		if (img_colour[i] > threshold_upper)
+		{
+			int r = img_colour[i + 2];
+			int g = img_colour[i + 1];
+			int b = img_colour[i];
+			int v = ((r+g+b)/3) - b - r - ((ABS(r - g) - ABS(r - b) - ABS(g - b))*10);
+			if (v < 0) v = 0;
+			if (v > 255) v = 255;
+			if (v == 0)
+			    filtered[i + 1] = (unsigned char)r;
+		}
+	}
+
+	delete[] histogram;
+	delete[] temp_histogram;
+}
+
 bool platedetection::Find(
     unsigned char *img_mono,
     int img_width, int img_height,

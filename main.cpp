@@ -17,7 +17,7 @@
 
 #include "anyoption.h"
 #include "utils/Image.h"
-#include "RawImage.h"
+#include "RawImage1.h"
 #include "RawImage2.h"
 #include "RawImage3.h"
 #include "RawImage4.h"
