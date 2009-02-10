@@ -15,26 +15,56 @@ void processimage::yellowFilter(
     int img_height,
     unsigned char* filtered)
 {
-	float mult = 1.0f / 255.0f;
-
 	// clear the filtered image
-	memcpy(filtered, 0, img_width * img_height * 3 * sizeof(unsigned char));
+	memset(filtered, 0, img_width * img_height * 3 * sizeof(unsigned char));
+
+	int* histogram = new int[256];
+	int* temp_buffer = new int[256];
+	memset(histogram, 0, 256*sizeof(int));
 
 	// apply filter
-	for (int i = (img_width * img_height * 3)-1; i >= 0; i -= 3)
+	for (int i = (img_width * img_height * 3)-3; i >= 0; i -= 3)
 	{
-		float r = img[i+2] * mult;
-		float g = img[i+1] * mult;
-		float b = img[i] * mult;
+		int r = img[i+2];
+		int g = img[i+1];
+		int b = img[i];
 
-        int yellow = (int)((r * g) - (g * b) - (r * b) * 255);
+		int v = r - g;
+		if (v < 0) v = -v;
+        int yellow = (int)((r + g) - ((b + v)*2));
         if (yellow > 0)
         {
-        	filtered[i] = 255;
-        	filtered[i+1] = 255;
-        	filtered[i+2] = 255;
+        	if (yellow > 255) yellow = 255;
+        	if (yellow < 0) yellow = 0;
+
+        	unsigned char y = (unsigned char)yellow;
+        	filtered[i] = y;
+        	filtered[i+1] = y;
+        	filtered[i+2] = y;
+
+            histogram[yellow]++;
         }
 	}
+	float MeanDark = 0;
+	float MeanLight = 0;
+	float DarkRatio = 0;
+	float threshold = thresholding::GetGlobalThreshold(histogram, 256, 0, temp_buffer, MeanDark, MeanLight, DarkRatio);
+
+	for (int i = (img_width * img_height * 3)-3; i >= 0; i -= 3)
+	{
+        if (filtered[i] > 0)
+        {
+        	if (filtered[i] < threshold)
+        	{
+        	    filtered[i] = 0;
+        	    filtered[i + 1] = 0;
+        	    filtered[i + 2] = 0;
+        	}
+        }
+	}
+
+	delete[] histogram;
+	delete[] temp_buffer;
 }
 
 

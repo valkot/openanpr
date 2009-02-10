@@ -17,6 +17,11 @@
 class platedetection
 {
 public:
+	static void ColourFilter(
+	    unsigned char* img_colour,
+	    int img_width, int img_height,
+	    unsigned char* filtered);
+
 	static bool Find(
 		    unsigned char *img_mono,
 		    int img_width, int img_height,

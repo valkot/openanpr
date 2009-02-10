@@ -23,6 +23,7 @@
 #include "utils/bitmap.h"
 #include "utils/polygon.h"
 #include "utils/processimage.h"
+#include "platedetection/platedetection.h"
 
 #include "cppunitlite/TestHarness.h"
 
@@ -41,32 +42,21 @@ TEST (edgesTest, MyTest)
 	Image image;
 	image.Height = 480;
 	image.Width = 640;
-	image.Data = raw_image;
-	image.BytesPerPixel = 1;
+	image.Data = raw_image4;
+	image.BytesPerPixel = 3;
 	timeval start,end,result;
 
-	int* histogram = new int[256];
-	int* temp_histogram = new int[256];
-	memset(histogram, 0, 256*sizeof(int));
-	for (int i = (image.Width * image.Height)-1; i >= 0; i--)
-		histogram[image.Data[i]]++;
+	unsigned char* filtered = new unsigned char[image.Width * image.Height * 3];
+	platedetection::ColourFilter(image.Data, image.Width, image.Height, filtered);
 
-	float MeanDark = 0;
-	float MeanLight = 0;
-	float DarkRatio = 0;
-	float threshold =
-		thresholding::GetGlobalThreshold(histogram, 255, 0, temp_histogram, MeanDark, MeanLight, DarkRatio);
-
-	threshold = MeanLight - ((MeanLight - threshold)* 0.1f);
-
-	unsigned char* filtered = new unsigned char[image.Width * image.Height];
-	memset(filtered, 0, image.Width * image.Height * sizeof(unsigned char));
-	for (int i = (image.Width * image.Height)-1; i >= 0; i--)
+	unsigned char* mono_img = new unsigned char[image.Width * image.Height];
+	for (int i = 0; i < image.Width * image.Height; i++)
 	{
-		if (image.Data[i] > threshold)
-			filtered[i] = image.Data[i];
+		mono_img[i] = filtered[i*3];
 	}
-	image.Data = filtered;
+
+	image.Data = mono_img;
+	image.BytesPerPixel = 1;
 
 	CannyEdgeDetector *edge_detector = new CannyEdgeDetector();
 	edge_detector->Update(image);
@@ -92,276 +82,30 @@ TEST (edgesTest, MyTest)
 
     delete bmp;
 	delete edge_detector;
-	delete[] histogram;
-	delete[] temp_histogram;
+	delete[] mono_img;
 	delete[] filtered;
 }
 
 
-TEST (thresholdTest, MyTest)
+TEST (ColourFilterTest, MyTest)
 {
 	Image image;
 	image.Height = 480;
 	image.Width = 640;
-	image.Data = raw_image;
-	image.BytesPerPixel = 1;
-
-	int* histogram = new int[256];
-	int* temp_histogram = new int[256];
-	memset(histogram, 0, 256*sizeof(int));
-	for (int i = (image.Width * image.Height)-1; i >= 0; i--)
-		histogram[image.Data[i]]++;
-
-	float MeanDark = 0;
-	float MeanLight = 0;
-	float DarkRatio = 0;
-	float threshold =
-		thresholding::GetGlobalThreshold(histogram, 255, 0, temp_histogram, MeanDark, MeanLight, DarkRatio);
-
-	float threshold_upper = MeanLight - ((MeanLight - threshold)* 0.1f);
-	float threshold_lower = MeanDark - ((threshold - MeanDark)* 0.1f);
+	image.Data = raw_image4;
+	image.BytesPerPixel = 3;
 
 	unsigned char* filtered = new unsigned char[image.Width * image.Height * 3];
-	memset(filtered, 0, image.Width * image.Height * 3 * sizeof(unsigned char));
-	for (int i = (image.Width * image.Height)-1; i >= 0; i--)
-	{
-		if (image.Data[i] > threshold_upper)
-		{
-			filtered[i*3] = image.Data[i];
-			filtered[(i*3) + 1] = image.Data[i];
-			filtered[(i*3) + 2] = image.Data[i];
-		}
-		if (image.Data[i] < threshold_lower)
-		{
-			filtered[i*3] = 0;
-			filtered[(i*3) + 1] = 0;
-			filtered[(i*3) + 2] = 255;
-		}
-	}
+	platedetection::ColourFilter(image.Data, image.Width, image.Height, filtered);
 
     Bitmap *bmp = new Bitmap(filtered, image.Width, image.Height, 3);
 
-    bmp->SavePPM("histogram.ppm");
+    bmp->SavePPM("colourfilter.ppm");
 
     delete bmp;
     delete[] filtered;
-	delete[] histogram;
-	delete[] temp_histogram;
 }
 
-
-TEST (detectPolygonsFromImageTest, MyTest)
-{
-    int img_width = 640;
-    int img_height = 480;
-
-    unsigned char* img = raw_image;
-    int erosion_dilation = 0;
-    float max_deviation = 2;
-    int minimum_edges_per_line = 20;
-    int maximum_no_of_lines = 100;
-    float valid_aspect_ratios[] = { 222.0f / 47.0f };
-    int no_of_valid_aspect_ratios = 1;
-    unsigned char* output_img = new unsigned char[img_width * img_height * 3];
-    bool show_lines = true;
-    bool show_polygons = false;
-    bool show_intercepts = true;
-
-    int max_edges_within_image = 1000;
-    int no_of_samples_per_line = max_edges_within_image;
-    int no_of_edge_samples_per_line = max_edges_within_image;
-
-    printf("Detecting...");
-
-    std::vector<int> edges;
-    std::vector<std::vector<float> > lines;
-    std::vector<polygon2D*> polygons;
-
-    shapes::DetectPolygons(
-    	img,
-    	img_width, img_height,
-    	erosion_dilation,
-        edges,
-        max_deviation,
-        lines,
-        polygons,
-        no_of_samples_per_line,
-        no_of_edge_samples_per_line,
-        minimum_edges_per_line,
-        maximum_no_of_lines,
-        max_edges_within_image,
-        valid_aspect_ratios,
-        no_of_valid_aspect_ratios,
-        output_img,
-        show_lines,
-        show_polygons,
-        show_intercepts);
-
-    printf("Done\n");
-
-    string debug_filename = "detectedpolygons_image.ppm";
-    Bitmap *bmp_debug = new Bitmap(output_img, img_width, img_height, 3);
-    bmp_debug->SavePPM(debug_filename.c_str());
-    delete bmp_debug;
-    delete[] output_img;
-
-    for (int i = 0; i < (int)polygons.size(); i++)
-    {
-    	delete polygons[i];
-    	polygons[i] = NULL;
-    }
-}
-
-TEST (detectPolygonsTest, MyTest)
-{
-    int img_width = 640;
-    int img_height = 480;
-    unsigned char* img = new unsigned char[img_width*img_height*3];
-    for (int i = 0; i < img_width * img_height * 3; i++) img[i] = 255;
-
-    float valid_aspect_ratios[] = { 1.0f, 18.0f / 8.0f };
-    int no_of_valid_aspect_ratios = 2;
-    float rotation = -30;
-    int no_of_edges = 200;
-    float noise = 3;
-    std::vector<int> edges;
-    int shape_width = 300;
-    int shape_height = 300;
-    int square_tx = 150;
-    int square_ty = 150;
-    int square_bx = square_tx + shape_width;
-    int square_by = square_ty + shape_height;
-    float square_cx = square_tx + ((square_bx - square_tx)/2.0f);
-    float square_cy = square_ty + ((square_by - square_ty)/2.0f);
-
-    for (int i = 0; i < no_of_edges; i++)
-    {
-    	int edge_x = rand() % img_width;
-    	int edge_y = rand() % img_height;
-
-    	if (rand() % 100 > 40)
-    	{
-    		int side = rand() % 4;
-    		int x0 = 0;
-    		int y0 = 0;
-    		int x1 = 0;
-    		int y1 = 0;
-    		switch(side)
-    		{
-				case 0:
-				{
-					x0 = square_tx;
-					y0 = square_ty;
-					x1 = square_bx;
-					y1 = square_ty;
-					break;
-				}
-				case 1:
-				{
-					x0 = square_bx;
-					y0 = square_ty;
-					x1 = square_bx;
-					y1 = square_by;
-					break;
-				}
-				case 2:
-				{
-					x0 = square_bx;
-					y0 = square_by;
-					x1 = square_tx;
-					y1 = square_by;
-					break;
-				}
-				case 3:
-				{
-					x0 = square_tx;
-					y0 = square_by;
-					x1 = square_tx;
-					y1 = square_ty;
-					break;
-				}
-    		}
-
-    		float dx,dy,dist,angle;
-
-    		dx = x1 - x0;
-    		dy = y1 - y0;
-    		edge_x = x0 + (int)((rand() % 10000) * dx / 10000);
-    		edge_y = y0 + (int)((rand() % 10000) * dy / 10000);
-
-    		dx = edge_x - square_cx;
-    		dy = edge_y - square_cy;
-    		dist = (float)sqrt(dx*dx + dy*dy);
-    		angle = (float)acos(dy / dist);
-    		if (dx < 0) angle = (3.1415927f * 2) - angle;
-    		angle += rotation * 3.1415927f / 180.0f;
-    		edge_x = (int)(square_cx + (dist * (float)sin(angle)));
-    		edge_y = (int)(square_cy + (dist * (float)cos(angle)));
-
-    		// add some noise
-    	    edge_x += ((rand() % 1000) * noise / 1000) - (noise * 0.5f);
-    	    edge_y += ((rand() % 1000) * noise / 1000) - (noise * 0.5f);
-    	}
-
-    	edges.push_back(edge_x);
-    	edges.push_back(edge_y);
-    }
-
-    int no_of_samples = no_of_edges;
-    int no_of_edge_samples = no_of_edges;
-    int minimum_edges_per_line = 10;
-    int maximum_no_of_lines = 4;
-    std::vector<std::vector<float> > lines;
-    std::vector<float> intercepts;
-    std::vector<polygon2D*> polygons;
-
-    //printf("detecting...");
-
-    shapes::DetectPolygons(
-        edges,
-        noise,
-        lines,
-        intercepts,
-        polygons,
-        no_of_samples,
-        no_of_edge_samples,
-        minimum_edges_per_line,
-        maximum_no_of_lines,
-        -200, -200, img_width+200, img_height+200,
-        valid_aspect_ratios,
-        no_of_valid_aspect_ratios,
-        false);
-
-    CHECK(polygons.size() == 1);
-
-    //printf("%d polygons detected\n", polygons.size());
-
-    for (int i = 0; i < (int)edges.size(); i += 2)
-    {
-    	// draw a circle
-    	drawing::drawSpot(img, img_width, img_height, edges[i], edges[i+1], 1, 0,0,0);
-    }
-
-    for (int i = 0; i < (int)intercepts.size(); i += 2)
-    	drawing::drawCircle(img, img_width, img_height, (int)intercepts[i], (int)intercepts[i+1], 5, 255,0,0, 0);
-
-    for (int i = 0; i < (int)polygons.size(); i++)
-    {
-        polygons[i]->show(img, img_width, img_height, 0,0,255, 0);
-    }
-
-    string debug_filename = "detectedpolygons_lines.ppm";
-    Bitmap *bmp_debug = new Bitmap(img, img_width, img_height, 3);
-    bmp_debug->SavePPM(debug_filename.c_str());
-    delete bmp_debug;
-    delete[] img;
-
-    for (int i = 0; i < (int)polygons.size(); i++)
-    {
-    	delete polygons[i];
-    	polygons[i] = NULL;
-    }
-}
 
 TEST (detectLinesTest, MyTest)
 {
