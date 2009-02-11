@@ -1,6 +1,9 @@
 #ifndef PLATEDETECTION_H_
 #define PLATEDETECTION_H_
 
+#define PLATE_YELLOW  0
+#define PLATE_WHITE   1
+
 #ifndef ABS
 #define ABS(a) (((a) < 0) ? -(a) : (a))
 #endif
@@ -25,7 +28,6 @@ public:
 	static bool Find(
 		    unsigned char *img_mono,
 		    int img_width, int img_height,
-		    int erosion_dilation,
 		    polygon2D* plate,
 		    bool debug,
 		    std::vector<unsigned char*> &debug_images);

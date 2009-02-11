@@ -59,7 +59,6 @@ TEST (rectanglesTest, MyTest)
 	image.BytesPerPixel = 1;
 
 	CannyEdgeDetector *edge_detector = new CannyEdgeDetector();
-	//edge_detector->Update(image);
 
     // to save debugging images set this to true
     bool debug = false;
