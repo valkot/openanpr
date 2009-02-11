@@ -35,6 +35,159 @@
 
 #ifdef TEST_LOW_LEVEL
 
+TEST (rectanglesTest, MyTest)
+{
+	unsigned char* test_image = raw_image1;
+
+    // image data
+    Image image;
+    image.Width = 640;
+    image.Height = 480;
+    image.Data = test_image;
+    image.BytesPerPixel = 3;
+
+	unsigned char* filtered = new unsigned char[image.Width * image.Height * 3];
+	platedetection::ColourFilter(image.Data, image.Width, image.Height, filtered);
+
+	unsigned char* mono_img = new unsigned char[image.Width * image.Height];
+	for (int i = 0; i < (int)(image.Width * image.Height); i++)
+	{
+		mono_img[i] = filtered[i*3 + 1];
+	}
+
+	image.Data = mono_img;
+	image.BytesPerPixel = 1;
+
+	CannyEdgeDetector *edge_detector = new CannyEdgeDetector();
+	//edge_detector->Update(image);
+
+    // to save debugging images set this to true
+    bool debug = false;
+
+    // ideal positions of the vertices within the image
+    float ideal_vertices[] = { 222.0117, 104.7593,
+                               414.0189, 109.8795,
+                               416.9897, 300.0131,
+                               222.0117, 300.0131 };
+
+    float maximum_aspect_ratio = 200.0f / 33.0f;
+    int maximum_groups = 45;
+    int bestfit_tries = 3;
+    int step_sizes[] = { 12, 4 };
+    int no_of_step_sizes = 2;
+    int grouping_radius_percent[] = { 0, 10, 40, 60 };
+    int grouping_radius_percent_levels = 4;
+    int erosion_dilation[] = { 1 };
+    int erosion_dilation_levels = 1;
+    int accuracy_level = 0;
+    int perimeter_detection_method = 1;
+    int compression[] = { 7000, 6000, 5000 };
+    int no_of_compressions = 3;
+    int minimum_volume_percent = 3;
+    int maximum_volume_percent = 20;
+    bool use_perimeter_fitting = true;
+    int perimeter_fit_threshold = 120;
+    std::vector<int> edges;
+    std::vector<float> orientation;
+    std::vector<std::vector<int> > dominant_edges;
+    std::vector<std::vector<std::vector<int> > > side_edges;
+    unsigned char* edges_image = new unsigned char[image.Width * image.Height];
+    int edges_image_width = 0;
+    int edges_image_height = 0;
+    std::vector<polygon2D*> rectangles;
+    std::vector<unsigned char*> debug_images;
+    unsigned char* erosion_dilation_buffer = new unsigned char[image.Width * image.Height];
+    int* downsampling_buffer0 = new int[image.Width * image.Height];
+    int* downsampling_buffer1 = new int[image.Width * image.Height];
+
+    shapes::DetectRectangles(
+        mono_img, image.Width, image.Height, 1,
+    	grouping_radius_percent,
+    	grouping_radius_percent_levels,
+    	erosion_dilation,
+    	erosion_dilation_levels,
+    	false,
+    	accuracy_level,
+    	maximum_aspect_ratio,
+    	debug,
+    	0,
+    	perimeter_detection_method,
+    	compression,
+    	no_of_compressions,
+    	minimum_volume_percent,
+    	maximum_volume_percent,
+    	use_perimeter_fitting,
+    	perimeter_fit_threshold,
+    	bestfit_tries,
+    	step_sizes,
+    	no_of_step_sizes,
+    	maximum_groups,
+    	edges,
+    	orientation,
+    	dominant_edges,
+    	side_edges,
+    	edges_image,
+    	edges_image_width,
+    	edges_image_height,
+    	edge_detector,
+    	rectangles,
+    	debug_images,
+    	erosion_dilation_buffer,
+    	downsampling_buffer0,
+    	downsampling_buffer1);
+
+    // save the debug images
+    std::string debug_filename;
+    for (unsigned int i = 0; i < debug_images.size(); i++)
+    {
+        // make a file name
+        debug_filename = "";
+        std::stringstream s_debug_filename;
+        s_debug_filename << "debug_" << i << ".ppm";
+        s_debug_filename >> debug_filename;
+
+        // create a bitmap object
+        Bitmap *bmp_debug1 = new Bitmap(debug_images[i], edges_image_width, edges_image_height, 3);
+
+        // save the bitmap object
+        printf("Saving debug image %s\n", debug_filename.c_str());
+        bmp_debug1->SavePPM(debug_filename.c_str());
+
+        delete bmp_debug1;
+    }
+
+    if ((int)rectangles.size() == 0)
+        printf("No rectangular regions were detected");
+
+
+    unsigned char* rectangles_img = new unsigned char[image.Width * image.Height * 3];
+    memcpy(rectangles_img, test_image, image.Width * image.Height * 3);
+    for (int i = 0; i < (int)rectangles.size(); i++)
+    {
+    	polygon2D* poly = rectangles[i];
+        poly->show(rectangles_img, image.Width, image.Height, 0, 255, 0, 0);
+    }
+
+
+    Bitmap *bmp = new Bitmap(rectangles_img, image.Width, image.Height, 3);
+    bmp->SavePPM("rectangles.ppm");
+    delete bmp;
+
+    bmp = new Bitmap(mono_img, image.Width, image.Height, 1);
+    bmp->SavePPM("mono.ppm");
+    delete bmp;
+
+    delete[] rectangles_img;
+	delete edge_detector;
+	delete[] mono_img;
+	delete[] filtered;
+    delete[] edges_image;
+    delete[] erosion_dilation_buffer;
+    delete[] downsampling_buffer0;
+    delete[] downsampling_buffer1;
+
+}
+
 TEST (edgesTest, MyTest)
 {
 	int itterations = 20;
@@ -50,7 +203,7 @@ TEST (edgesTest, MyTest)
 	platedetection::ColourFilter(image.Data, image.Width, image.Height, filtered);
 
 	unsigned char* mono_img = new unsigned char[image.Width * image.Height];
-	for (int i = 0; i < image.Width * image.Height; i++)
+	for (int i = 0; i < (int)(image.Width * image.Height); i++)
 	{
 		mono_img[i] = filtered[i*3];
 	}
