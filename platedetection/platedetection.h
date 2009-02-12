@@ -20,6 +20,8 @@
 class platedetection
 {
 public:
+	static void MergeRectangles(std::vector<polygon2D*> &rectangles);
+
 	static void ColourFilter(
 	    unsigned char* img_colour,
 	    int img_width, int img_height,
@@ -28,9 +30,11 @@ public:
 	static bool Find(
 		    unsigned char *img_mono,
 		    int img_width, int img_height,
-		    polygon2D* plate,
+		    std::vector<polygon2D*> &plate,
 		    bool debug,
-		    std::vector<unsigned char*> &debug_images);
+		    std::vector<unsigned char*> &debug_images,
+			int &debug_image_width,
+			int &debug_image_height);
 
 	platedetection();
 	virtual ~platedetection();

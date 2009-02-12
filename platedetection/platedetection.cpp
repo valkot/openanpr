@@ -50,12 +50,119 @@ void platedetection::ColourFilter(
 	delete[] temp_histogram;
 }
 
+void platedetection::MergeRectangles(std::vector<polygon2D*> &rectangles)
+{
+	float similarity_threshold_percent = 30;
+
+	float* centres = new float[(int)rectangles.size()*2];
+	float* lengths = new float[(int)rectangles.size()*2];
+
+	for (int i = 0; i < (int)rectangles.size(); i++)
+	{
+		polygon2D* rect = rectangles[i];
+		rect->GetSquareCentre(centres[i*2], centres[(i*2) + 1]);
+		lengths[i*2] = rect->getLongestSide();
+		lengths[(i*2)+1] = rect->getShortestSide();
+	}
+
+    hypergraph *hype = new hypergraph((int)rectangles.size(), 1);
+	for (int i = 0; i < (int)rectangles.size() - 1; i++)
+	{
+		float length0 = lengths[i*2];
+		float length1 = lengths[(i*2)+1];
+		for (int j = i + 1; j < (int)rectangles.size(); j++)
+		{
+			float length_diff_percent = ABS(length0 - lengths[j*2]) * 100 / length0;
+			if (length_diff_percent < similarity_threshold_percent)
+			{
+				length_diff_percent = ABS(length1 - lengths[(j*2)+1]) * 100 / length1;
+				if (length_diff_percent < similarity_threshold_percent)
+				{
+					float dx = ABS(centres[i*2] - centres[j*2]);
+					if (dx < length1 * 0.4f)
+					{
+						float dy = ABS(centres[(i*2)+1] - centres[(j*2)+1]);
+						if (dy < length1 * 0.4f)
+						{
+				            hype->LinkByIndex(i, j);
+				            hype->LinkByIndex(j, i);
+						}
+					}
+				}
+			}
+
+		}
+	}
+
+	std::vector<polygon2D*> merged;
+    float* vertex_x = new float[4];
+    float* vertex_y = new float[4];
+	for (int i = 0; i < (int)rectangles.size(); i++)
+	{
+		if (hype->GetFlagByIndex(i, 0) == false)
+		{
+		    std::vector<hypergraph_node *> members;
+            hype->PropogateFlagFromIndex(i, 0, members, (int)rectangles.size()*10);
+            if ((int)members.size() > 0)
+            {
+            	for (int j = 0; j < 4; j++)
+            	{
+            	    vertex_x[j] = 0;
+            	    vertex_y[j] = 0;
+            	}
+            	for (int j = 0; j < (int)members.size(); j++)
+            	{
+            		int index = members[j]->ID;
+            		for (int vertex = 0; vertex < 4; vertex++)
+            		{
+            		    vertex_x[vertex] += rectangles[index]->x_points[vertex];
+            		    vertex_y[vertex] += rectangles[index]->y_points[vertex];
+            		}
+            	}
+            	for (int j = 0; j < 4; j++)
+            	{
+            		vertex_x[j] /= (int)members.size();
+            		vertex_y[j] /= (int)members.size();
+            	}
+            	polygon2D* merged_polygon = new polygon2D();
+            	for (int j = 0; j < 4; j++)
+            	{
+            	    merged_polygon->Add(vertex_x[j], vertex_y[j]);
+            	}
+            	merged.push_back(merged_polygon);
+            }
+		}
+	}
+
+	printf("rectangles: %d\nmerged %d\n", rectangles.size(), merged.size());
+
+	for (int i = 0; i < (int)rectangles.size(); i++)
+	{
+	    delete rectangles[i];
+	    rectangles[i] = NULL;
+	}
+	rectangles.clear();
+	for (int i = 0; i < (int)merged.size(); i++)
+	{
+		rectangles.push_back(merged[i]);
+		merged[i] = NULL;
+	}
+
+	delete[] vertex_x;
+	delete[] vertex_y;
+    delete hype;
+	delete[] lengths;
+	delete[] centres;
+}
+
 bool platedetection::Find(
     unsigned char *img_colour,
     int img_width, int img_height,
-    polygon2D* plate,
+    std::vector<polygon2D*> &plates,
     bool debug,
-    std::vector<unsigned char*> &debug_images)
+    std::vector<unsigned char*> &debug_images,
+	int &debug_image_width,
+	int &debug_image_height)
 {
     bool found = false;
 
@@ -70,11 +177,13 @@ bool platedetection::Find(
 	// apply colour filters
 	platedetection::ColourFilter(img_colour, img_width, img_height, filtered);
 
-	for (int plate_colour = PLATE_YELLOW; plate_colour < PLATE_WHITE; plate_colour++)
+	for (int plate_colour = PLATE_YELLOW; plate_colour <= PLATE_WHITE; plate_colour++)
 	{
 		for (int i = 0; i < img_width * img_height; i++)
-			mono_img[i] = filtered[i*3 + plate_colour];
+			mono_img[i] = filtered[(i*3) + plate_colour];
 
+		std::vector<polygon2D*> rectangles;
+		std::vector<unsigned char*> temp_debug_images;
 		float maximum_aspect_ratio = 200.0f / 33.0f;
 		int maximum_groups = 45;
 		int bestfit_tries = 3;
@@ -82,8 +191,8 @@ bool platedetection::Find(
 		int no_of_step_sizes = 2;
 		int grouping_radius_percent[] = { 0, 10, 40, 60 };
 		int grouping_radius_percent_levels = 4;
-		int erosion_dilation[] = { 1 };
-		int erosion_dilation_levels = 1;
+		int erosion_dilation[] = { 1, 3 };
+		int erosion_dilation_levels = 2;
 		int accuracy_level = 0;
 		int perimeter_detection_method = 1;
 		int compression[] = { 7000, 6000, 5000 };
@@ -96,9 +205,6 @@ bool platedetection::Find(
 		std::vector<float> orientation;
 		std::vector<std::vector<int> > dominant_edges;
 		std::vector<std::vector<std::vector<int> > > side_edges;
-		int edges_image_width = 0;
-		int edges_image_height = 0;
-		std::vector<polygon2D*> rectangles;
 
 		shapes::DetectRectangles(
 			mono_img, img_width, img_height, 1,
@@ -127,34 +233,62 @@ bool platedetection::Find(
 			dominant_edges,
 			side_edges,
 			edges_image,
-			edges_image_width,
-			edges_image_height,
+			debug_image_width,
+			debug_image_height,
 			edge_detector,
 			rectangles,
-			debug_images,
+			temp_debug_images,
 			erosion_dilation_buffer,
 			downsampling_buffer0,
 			downsampling_buffer1);
 
-		if (debug)
+
+		for (int i = 0; i < (int)temp_debug_images.size(); i++)
+			debug_images.push_back(temp_debug_images[i]);
+
+		for (int i = 0; i < (int)rectangles.size(); i++)
 		{
-			unsigned char* rectangles_img = new unsigned char[img_width * img_height * 3];
-			memcpy(rectangles_img, img_colour, img_width * img_height * 3);
-			for (int i = 0; i < (int)rectangles.size(); i++)
+			float tx = img_width;
+			float ty = img_height;
+			float bx = 0;
+			float by = 0;
+			for (int vertex = 0; vertex < 4; vertex++)
 			{
-				polygon2D* poly = rectangles[i];
-				poly->show(rectangles_img, img_width, img_height, 0, 255, 0, 0);
+				if (rectangles[i]->x_points[vertex] < tx) tx = rectangles[i]->x_points[vertex];
+				if (rectangles[i]->y_points[vertex] < ty) ty = rectangles[i]->y_points[vertex];
+				if (rectangles[i]->x_points[vertex] > bx) bx = rectangles[i]->x_points[vertex];
+				if (rectangles[i]->y_points[vertex] > by) by = rectangles[i]->y_points[vertex];
 			}
-			debug_images.push_back(rectangles_img);
+			int w = bx - tx;
+			int h = by - ty;
+			if (w > h)
+			{
+			    plates.push_back(rectangles[i]);
+			}
+			else
+			{
+				delete rectangles[i];
+				rectangles[i] = NULL;
+			}
 		}
-
 	}
 
-	for (int i = 0; i < (int)rectangles.size(); i++)
+	/*
+	if (debug)
 	{
-		delete rectangles[i];
-		rectangles[i] = NULL;
+		printf("debug_image_width: %d\n", debug_image_width);
+		unsigned char* rectangles_img = new unsigned char[debug_image_width * debug_image_height * 3];
+		memcpy(rectangles_img, img_colour, debug_image_width * debug_image_height * 3);
+		for (int i = 0; i < (int)plates.size(); i++)
+		{
+			polygon2D* poly = plates[i];
+			poly->show(rectangles_img, debug_image_width, debug_image_height, 0, 255, 0, 0);
+		}
+		debug_images.push_back(rectangles_img);
 	}
+	*/
+
+	MergeRectangles(plates);
 
 	delete edge_detector;
 	delete[] mono_img;
