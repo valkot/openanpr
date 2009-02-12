@@ -35,6 +35,78 @@
 
 #ifdef TEST_LOW_LEVEL
 
+TEST (FindPlatesTest, MyTest)
+{
+	unsigned char* test_image = raw_image3;
+
+    // image data
+    Image image;
+    image.Width = 640;
+    image.Height = 480;
+    image.Data = test_image;
+    image.BytesPerPixel = 3;
+
+    bool debug = false;
+    std::vector<polygon2D*> plates;
+    std::vector<unsigned char*> debug_images;
+    int debug_image_width = 0;
+    int debug_image_height = 0;
+
+    bool plates_found = platedetection::Find(
+        image.Data,
+        image.Width, image.Height,
+        plates,
+        debug,
+        debug_images,
+        debug_image_width,
+        debug_image_height);
+
+    // save the debug images
+    std::string debug_filename;
+    for (unsigned int i = 0; i < debug_images.size(); i++)
+    {
+        // make a file name
+        debug_filename = "";
+        std::stringstream s_debug_filename;
+        s_debug_filename << "debug_plates_" << i << ".ppm";
+        s_debug_filename >> debug_filename;
+
+        // create a bitmap object
+        Bitmap *bmp_debug1 = new Bitmap(debug_images[i], debug_image_width, debug_image_height, 3);
+
+        // save the bitmap object
+        printf("Saving debug image %s\n", debug_filename.c_str());
+        bmp_debug1->SavePPM(debug_filename.c_str());
+
+        delete bmp_debug1;
+    }
+
+    if ((int)plates.size() == 0)
+        printf("No number plates were detected\n");
+
+    unsigned char* rectangles_img = new unsigned char[image.Width * image.Height * 3];
+    memcpy(rectangles_img, test_image, image.Width * image.Height * 3);
+    for (int i = 0; i < (int)plates.size(); i++)
+    {
+    	polygon2D* poly = plates[i];
+        poly->show(rectangles_img, image.Width, image.Height, 0, 255, 0, 0);
+    }
+
+    Bitmap *bmp = new Bitmap(rectangles_img, image.Width, image.Height, 3);
+    bmp->SavePPM("number_plates.ppm");
+
+    for (int i = 0; i < (int)plates.size(); i++)
+    {
+    	delete plates[i];
+    	plates[i] = NULL;
+    }
+
+    delete bmp;
+    delete[] rectangles_img;
+}
+
+
+
 TEST (rectanglesTest, MyTest)
 {
 	unsigned char* test_image = raw_image1;
@@ -70,14 +142,14 @@ TEST (rectanglesTest, MyTest)
                                222.0117, 300.0131 };
 
     float maximum_aspect_ratio = 200.0f / 33.0f;
-    int maximum_groups = 45;
+    int maximum_groups = 9999;
     int bestfit_tries = 3;
     int step_sizes[] = { 12, 4 };
     int no_of_step_sizes = 2;
     int grouping_radius_percent[] = { 0, 10, 40, 60 };
     int grouping_radius_percent_levels = 4;
-    int erosion_dilation[] = { 1 };
-    int erosion_dilation_levels = 1;
+    int erosion_dilation[] = { 1, 3 };
+    int erosion_dilation_levels = 2;
     int accuracy_level = 0;
     int perimeter_detection_method = 1;
     int compression[] = { 7000, 6000, 5000 };
@@ -156,7 +228,7 @@ TEST (rectanglesTest, MyTest)
     }
 
     if ((int)rectangles.size() == 0)
-        printf("No rectangular regions were detected");
+        printf("No rectangular regions were detected\n");
 
 
     unsigned char* rectangles_img = new unsigned char[image.Width * image.Height * 3];
