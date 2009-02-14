@@ -134,8 +134,6 @@ void platedetection::MergeRectangles(std::vector<polygon2D*> &rectangles)
 		}
 	}
 
-	printf("rectangles: %d\nmerged %d\n", rectangles.size(), merged.size());
-
 	for (int i = 0; i < (int)rectangles.size(); i++)
 	{
 	    delete rectangles[i];
@@ -153,6 +151,91 @@ void platedetection::MergeRectangles(std::vector<polygon2D*> &rectangles)
     delete hype;
 	delete[] lengths;
 	delete[] centres;
+}
+
+/*!
+ * \brief extracts mono images for each candidate number plate
+ * \param img_colour image data
+ * \param img_width width of the image
+ * \param img_height height of the image
+ * \param plates candidate number plate perimeters
+ * \param plate_image_width a specified fixed width for all extracted images
+ * \param plate_image_height height values for the extracted number plate images
+ * \param plate_image extracted mono images
+ */
+void platedetection::ExtractPlateImages(
+    unsigned char *img_colour,
+    int img_width, int img_height,
+    std::vector<polygon2D*> &plates,
+    int plate_image_width,
+    std::vector<int> &plate_image_height,
+    std::vector<unsigned char*> &plate_images)
+{
+	int pixels = (img_width * img_height * 3) - 3;
+
+	polygon2D* number_plate = new polygon2D();
+	for (int vertex = 0; vertex < 4; vertex++) number_plate->Add(0, 0);
+
+	for (int p = 0; p < (int)plates.size(); p++)
+	{
+		polygon2D* number_plate = plates[p];
+
+		float origin_x = img_width;
+		float origin_y = img_height;
+		int origin_index = 0;
+
+		for (int vertex = 0; vertex < 4; vertex++)
+		{
+            if (number_plate->x_points[vertex] + number_plate->y_points[vertex] < origin_x + origin_y)
+            {
+           	    origin_x = number_plate->x_points[vertex];
+           	    origin_y = number_plate->y_points[vertex];
+           	    origin_index = vertex;
+            }
+		}
+		int next_index = origin_index + 1;
+		if (next_index >= 4) next_index -= 4;
+		int prev_index = origin_index - 1;
+		if (prev_index < 0) prev_index += 4;
+
+		if (number_plate->getSideLength(origin_index) < number_plate->getSideLength(prev_index))
+		{
+			int temp_index = next_index;
+			next_index = prev_index;
+			prev_index = temp_index;
+		}
+
+		float dx_horizontal = number_plate->x_points[next_index] - origin_x;
+		float dy_horizontal = number_plate->y_points[next_index] - origin_y;
+		int w = (float)sqrt(dx_horizontal*dx_horizontal + dy_horizontal*dy_horizontal);
+		float dx_vertical = number_plate->x_points[prev_index] - origin_x;
+		float dy_vertical = number_plate->y_points[prev_index] - origin_y;
+		int h = (float)sqrt(dx_vertical*dx_vertical + dy_vertical*dy_vertical);
+		int height = (int)(h * plate_image_width / w);
+
+		unsigned char* plate_image = new unsigned char[plate_image_width * height];
+		plate_image_height.push_back(height);
+		plate_images.push_back(plate_image);
+		float mult_0 = dx_horizontal / plate_image_width;
+		float mult_1 = dy_horizontal / plate_image_width;
+		float mult_2 = dx_vertical / height;
+		float mult_3 = dy_vertical / height;
+		int n = 0;
+	    for (int y = 0; y < height; y++)
+		{
+			float image_x = origin_x + (y * mult_2);
+			float image_y = origin_y + (y * mult_3);
+
+			for (int x = 0; x < plate_image_width; x++, n++, image_x += mult_0, image_y += mult_1)
+			{
+                int n2 = ((((int)image_y * img_width) + (int)image_x) * 3) + 2;
+                if ((n2 >-1) && (n2 < pixels))
+                {
+                    plate_image[n] = img_colour[n2];
+                }
+			}
+		}
+	}
 }
 
 bool platedetection::Find(
@@ -297,6 +380,8 @@ bool platedetection::Find(
     delete[] erosion_dilation_buffer;
     delete[] downsampling_buffer0;
     delete[] downsampling_buffer1;
+
+    if ((int)plates.size() > 0) found = true;
 
 	return(found);
 }
