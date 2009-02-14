@@ -24,6 +24,7 @@
 #include "utils/polygon.h"
 #include "utils/processimage.h"
 #include "platedetection/platedetection.h"
+#include "platedetection/platereader.h"
 
 #include "cppunitlite/TestHarness.h"
 
@@ -37,7 +38,7 @@
 
 TEST (FindPlatesTest, MyTest)
 {
-	unsigned char* test_image = raw_image4;
+	unsigned char* test_image = raw_image1;
 
     // image data
     Image image;
@@ -86,11 +87,12 @@ TEST (FindPlatesTest, MyTest)
     if ((int)plates.size() == 0)
         printf("No number plates were detected\n");
 
+    std::vector<unsigned char*> plate_images;
+    std::vector<unsigned char*> binary_images;
     if (plates.size() > 0)
     {
         int plate_image_width = 200;
         std::vector<int> plate_image_height;
-        std::vector<unsigned char*> plate_images;
 	    platedetection::ExtractPlateImages(
 	        image.Data,
 	        image.Width, image.Height,
@@ -99,6 +101,43 @@ TEST (FindPlatesTest, MyTest)
 	        plate_image_height,
 	        plate_images);
 
+	    platereader::Binarise(
+	    	plate_image_width,
+	    	plate_image_height,
+	        plate_images,
+	        binary_images);
+
+	    float expected_character_width_percent = 15;
+	    std::vector<std::vector<unsigned char*> > characters;
+	    std::vector<std::vector<int> > characters_dimensions;
+	    platereader::SeparateCharactersStandardPlate(
+	    	expected_character_width_percent,
+	    	plate_image_width,
+	    	plate_image_height,
+	        binary_images,
+	        characters,
+	        characters_dimensions);
+
+	    for (int p = 0; p < (int)plates.size(); p++)
+	    {
+	    	std::vector<unsigned char*> chars = characters[p];
+	    	std::vector<int> chars_dimensions = characters_dimensions[p];
+
+	    	for (int c = 0; c < (int)chars.size(); c++)
+	    	{
+				std::string char_filename = "";
+				std::stringstream s_char_filename;
+				s_char_filename << "plate_" << p << "_char" << c << ".ppm";
+				s_char_filename >> char_filename;
+
+				int char_image_width = chars_dimensions[c*2];
+				int char_image_height = chars_dimensions[(c*2)+1];
+				Bitmap *bmp_plate = new Bitmap(chars[c], char_image_width, char_image_height, 1);
+				bmp_plate->SavePPM(char_filename.c_str());
+				delete bmp_plate;
+	    	}
+	    }
+
 	    for (int p = 0; p < (int)plates.size(); p++)
 	    {
 	        std::string plate_filename = "";
@@ -106,7 +145,8 @@ TEST (FindPlatesTest, MyTest)
 	        s_plate_filename << "plate_" << p << ".ppm";
 	        s_plate_filename >> plate_filename;
 
-	        Bitmap *bmp_plate = new Bitmap(plate_images[p], plate_image_width, plate_image_height[p], 1);
+	        //Bitmap *bmp_plate = new Bitmap(plate_images[p], plate_image_width, plate_image_height[p], 1);
+	        Bitmap *bmp_plate = new Bitmap(binary_images[p], plate_image_width, plate_image_height[p], 1);
 	        bmp_plate->SavePPM(plate_filename.c_str());
             delete bmp_plate;
 	    }
@@ -127,6 +167,18 @@ TEST (FindPlatesTest, MyTest)
     {
     	delete plates[i];
     	plates[i] = NULL;
+    }
+
+    for (int i = 0; i < (int)plate_images.size(); i++)
+    {
+    	delete plate_images[i];
+    	plate_images[i] = NULL;
+    }
+
+    for (int i = 0; i < (int)binary_images.size(); i++)
+    {
+    	delete binary_images[i];
+    	binary_images[i] = NULL;
     }
 
     delete bmp;
