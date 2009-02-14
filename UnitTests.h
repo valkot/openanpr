@@ -37,7 +37,7 @@
 
 TEST (FindPlatesTest, MyTest)
 {
-	unsigned char* test_image = raw_image3;
+	unsigned char* test_image = raw_image4;
 
     // image data
     Image image;
@@ -61,6 +61,8 @@ TEST (FindPlatesTest, MyTest)
         debug_image_width,
         debug_image_height);
 
+    CHECK(plates_found == true);
+
     // save the debug images
     std::string debug_filename;
     for (unsigned int i = 0; i < debug_images.size(); i++)
@@ -83,6 +85,32 @@ TEST (FindPlatesTest, MyTest)
 
     if ((int)plates.size() == 0)
         printf("No number plates were detected\n");
+
+    if (plates.size() > 0)
+    {
+        int plate_image_width = 200;
+        std::vector<int> plate_image_height;
+        std::vector<unsigned char*> plate_images;
+	    platedetection::ExtractPlateImages(
+	        image.Data,
+	        image.Width, image.Height,
+	        plates,
+	        plate_image_width,
+	        plate_image_height,
+	        plate_images);
+
+	    for (int p = 0; p < (int)plates.size(); p++)
+	    {
+	        std::string plate_filename = "";
+	        std::stringstream s_plate_filename;
+	        s_plate_filename << "plate_" << p << ".ppm";
+	        s_plate_filename >> plate_filename;
+
+	        Bitmap *bmp_plate = new Bitmap(plate_images[p], plate_image_width, plate_image_height[p], 1);
+	        bmp_plate->SavePPM(plate_filename.c_str());
+            delete bmp_plate;
+	    }
+    }
 
     unsigned char* rectangles_img = new unsigned char[image.Width * image.Height * 3];
     memcpy(rectangles_img, test_image, image.Width * image.Height * 3);

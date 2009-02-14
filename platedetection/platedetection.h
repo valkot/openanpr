@@ -28,13 +28,21 @@ public:
 	    unsigned char* filtered);
 
 	static bool Find(
-		    unsigned char *img_mono,
+		    unsigned char *img_colour,
 		    int img_width, int img_height,
-		    std::vector<polygon2D*> &plate,
+		    std::vector<polygon2D*> &plates,
 		    bool debug,
 		    std::vector<unsigned char*> &debug_images,
 			int &debug_image_width,
 			int &debug_image_height);
+
+	static void ExtractPlateImages(
+	    unsigned char *img_colour,
+	    int img_width, int img_height,
+	    std::vector<polygon2D*> &plates,
+	    int plate_image_width,
+	    std::vector<int> &plate_image_height,
+	    std::vector<unsigned char*> &plate_images);
 
 	platedetection();
 	virtual ~platedetection();
