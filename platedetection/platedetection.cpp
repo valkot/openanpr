@@ -1,15 +1,5 @@
 #include "platedetection.h"
 
-platedetection::platedetection()
-{
-
-}
-
-platedetection::~platedetection()
-{
-
-}
-
 void platedetection::ColourFilter(
     unsigned char* img_colour,
     int img_width, int img_height,

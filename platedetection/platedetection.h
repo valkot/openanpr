@@ -44,8 +44,6 @@ public:
 	    std::vector<int> &plate_image_height,
 	    std::vector<unsigned char*> &plate_images);
 
-	platedetection();
-	virtual ~platedetection();
 };
 
 #endif /* PLATEDETECTION_H_ */
