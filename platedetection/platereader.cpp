@@ -19,6 +19,37 @@
 
 #include "platereader.h"
 
+void platereader::RemoveStragglers(
+    std::vector<int> &character_image_dimensions,
+    std::vector<int> &character_positions,
+    std::vector<unsigned char*> &character_images)
+{
+	if ((int)character_images.size() > 0)
+	{
+		int average_height = 0;
+		for (int i = (int)character_images.size()-1; i >= 0; i--)
+			average_height += character_image_dimensions[(i*2)+1];
+
+		average_height /= (int)character_images.size();
+        int minimum_height = average_height * 70/100;
+
+        for (int i = (int)character_images.size()-1; i >= 0; i--)
+		{
+			int height = character_image_dimensions[(i*2)+1];
+			if (height < minimum_height)
+			{
+				delete[] character_images[i];
+				character_images[i] = NULL;
+				character_images.erase(character_images.begin()+i);
+				character_image_dimensions.erase(character_image_dimensions.begin()+(i*2)+1);
+				character_image_dimensions.erase(character_image_dimensions.begin()+(i*2));
+				character_positions.erase(character_positions.begin()+(i*2)+1);
+				character_positions.erase(character_positions.begin()+(i*2));
+			}
+		}
+	}
+}
+
 /*!
  * \brief resample the character images into a fixed resolution ready for recognition
  * \param character_image_dimensions width and height of each character image

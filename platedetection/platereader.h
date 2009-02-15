@@ -36,6 +36,11 @@
 class platereader
 {
 public:
+	static void RemoveStragglers(
+	    std::vector<int> &character_image_dimensions,
+	    std::vector<int> &character_positions,
+	    std::vector<unsigned char*> &character_images);
+
 	static void Erode(
 	    int character_image_width,
 	    int character_image_height,
