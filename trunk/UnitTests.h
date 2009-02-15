@@ -58,7 +58,7 @@
 
 TEST (FindPlatesTest, MyTest)
 {
-	unsigned char* test_image = raw_image4;
+	unsigned char* test_image = raw_image2;
 
     // image data
     Image image;
@@ -144,7 +144,13 @@ TEST (FindPlatesTest, MyTest)
 	    {
 	    	std::vector<unsigned char*> chars = characters[p];
 	    	std::vector<int> chars_dimensions = characters_dimensions[p];
+	    	std::vector<int> chars_positions = characters_positions[p];
 	    	std::vector<unsigned char*> resampled_chars;
+
+	    	platereader::RemoveStragglers(
+	    	    chars_dimensions,
+	    	    chars_positions,
+	    	    chars);
 
 	    	// resample to a fixed resolution
 	    	int resampled_width = 20;

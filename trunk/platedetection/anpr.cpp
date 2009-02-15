@@ -77,11 +77,17 @@ void anpr::Read(
 	    {
 	    	std::vector<unsigned char*> chars = characters[p];
 	    	std::vector<unsigned char*> resampled_chars;
+	    	std::vector<int> chars_positions = characters_positions[p];
 	    	std::vector<int> chars_dimensions = characters_dimensions[p];
 
+	    	platereader::RemoveStragglers(
+	    	    chars_dimensions,
+	    	    chars_positions,
+	    	    chars);
+
 	    	// resample to a fixed resolution
-	    	int resampled_width = 32;
-	    	int resampled_height = 32;
+	    	int resampled_width = 20;
+	    	int resampled_height = 20;
 	    	platereader::Resample(chars_dimensions,
 	                 chars,
 	    	         resampled_width,
