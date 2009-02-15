@@ -17,6 +17,29 @@
 class platereader
 {
 public:
+	static void Erode(
+	    int character_image_width,
+	    int character_image_height,
+	    unsigned char* character_image,
+	    int minimum_occupancy_percent);
+
+	static void Trim(
+	    int plate_image_width,
+	    int plate_image_height,
+	    unsigned char* number_plate,
+	    float threshold_percent,
+	    int &tx,
+	    int &ty,
+	    int &bx,
+	    int &by);
+
+	static void VerticalCrop(
+	    int plate_image_width,
+	    int plate_image_height,
+	    unsigned char* number_plate,
+	    int &top_y,
+	    int &bottom_y);
+
 	static void SeparateCharactersStandardPlate(
 		float minimum_character_width_percent,
 		int plate_image_width,

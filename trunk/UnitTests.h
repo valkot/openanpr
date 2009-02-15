@@ -38,7 +38,7 @@
 
 TEST (FindPlatesTest, MyTest)
 {
-	unsigned char* test_image = raw_image4;
+	unsigned char* test_image = raw_image3;
 
     // image data
     Image image;
