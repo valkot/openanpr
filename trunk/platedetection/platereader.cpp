@@ -1,6 +1,88 @@
 
 #include "platereader.h"
 
+/*!
+ * \brief resample the character images into a fixed resolution ready for recognition
+ * \param character_image_dimensions width and height of each character image
+ * \param character_images image data for each character
+ * \param resampled_width resampled width
+ * \param resampled_height resampled height
+ * \param resampled_character_images resamples image for each character
+ */
+void platereader::Resample(
+	std::vector<int> &character_image_dimensions,
+    std::vector<unsigned char*> &character_images,
+	int resampled_width,
+	int resampled_height,
+    std::vector<unsigned char*> &resampled_character_images)
+{
+    for (int i = 0; i < (int)character_images.size(); i++)
+    {
+        unsigned char* resampled = new unsigned char[resampled_width * resampled_height];
+        Resample(character_image_dimensions[i*2],
+        		 character_image_dimensions[(i*2)+1],
+        		 character_images[i],
+        		 resampled_width,
+        		 resampled_height,
+        		 resampled);
+        resampled_character_images.push_back(resampled);
+    }
+}
+
+/*!
+ * \brief resample the character image into a fixed resolution ready for recognition
+ * \param character_image_width width of the character image
+ * \param character_image_height height of the character image
+ * \param character_image image data
+ * \param resampled_width resampled width
+ * \param resampled_height resampled height
+ * \param resampled_character_image resampled character image data
+ */
+void platereader::Resample(
+    int character_image_width,
+	int character_image_height,
+	unsigned char* character_image,
+	int resampled_width,
+	int resampled_height,
+	unsigned char* resampled_character_image)
+{
+	int min_width_percent = 40;
+	int min_width = character_image_height* min_width_percent/100;
+	int offset = (resampled_width/2) - (resampled_width*min_width_percent/200);
+	memset(resampled_character_image, 0, resampled_width * resampled_height * sizeof(unsigned char));
+	int n = 0;
+	for (int y = 0; y < character_image_height; y++)
+	{
+		int yy = y * resampled_height / character_image_height;
+		for (int x = 0; x < character_image_width; x++, n++)
+		{
+			if (character_image[n] > 0)
+			{
+			    int xx = x * resampled_width / character_image_width;
+
+			    if (character_image_width < min_width)
+			    {
+			    	xx = offset + (x * resampled_width / character_image_height);
+			    }
+
+			    if ((xx > -1) && (xx < resampled_width))
+			    {
+			        int n2 = (yy * resampled_width) + xx;
+			        resampled_character_image[n2] = (unsigned char)255;
+			    }
+			}
+		}
+	}
+}
+
+
+/*!
+ * \brief erodes the given character image, which helps to ensure that the system is invariant to character line thickness
+ * \param character_image_width width of the character image
+ * \param character_image_height height of the character image
+ * \param character_image image data
+ * \param minimum_occupancy_percent minimum percentage of occupied pixels
+ */
 void platereader::Erode(
     int character_image_width,
     int character_image_height,
@@ -198,8 +280,9 @@ void platereader::VerticalCrop(
     int max_crop = plate_image_height * 10 / 100;
     int min_occupancy = plate_image_width * 20 / 100;
 
+    int start_y = top_y;
     top_y = 0;
-    for (int y = 0; y < max_crop; y++)
+    for (int y = start_y; y < start_y+max_crop; y++)
     {
     	int occupancy = 0;
     	for (int x = 0; x < plate_image_width; x++)
@@ -214,7 +297,8 @@ void platereader::VerticalCrop(
     		break;
     	}
     }
-    for (int y = plate_image_height-1; y > plate_image_height - 1 - max_crop; y--)
+    int end_y = bottom_y;
+    for (int y = end_y; y > end_y - max_crop; y--)
     {
     	int occupancy = 0;
     	for (int x = 0; x < plate_image_width; x++)
@@ -232,21 +316,23 @@ void platereader::VerticalCrop(
 }
 
 /*!
- * \brief Returns a set of images, one for each character.  Note that this only works for rectangular plates with the usual aspect ratio.  Square plates must be separated into rows before being passed to this function.
+ * \brief Returns a set of images, one for each character
  * \param minimum_character_width_percent the minimum width of a character as a percentage of the plate image width
  * \param plate_image_width width of the number plate image
  * \param plate_image_height height of each number plate image
  * \param binary_images binarised number plate images
  * \param characters returned character images
  * \param characters_dimensions dimensions of each character image
+ * \param characters_positions position of each character within the number plate image
  */
-void platereader::SeparateCharactersStandardPlate(
+void platereader::SeparateCharacters(
 	float minimum_character_width_percent,
 	int plate_image_width,
 	std::vector<int> plate_image_height,
     std::vector<unsigned char*> &binary_images,
     std::vector<std::vector<unsigned char*> > &characters,
-    std::vector<std::vector<int> > &characters_dimensions)
+    std::vector<std::vector<int> > &characters_dimensions,
+    std::vector<std::vector<int> > &characters_positions)
 {
 	int* interval = new int[plate_image_width];
 	int* separate = new int[plate_image_width];
@@ -258,168 +344,245 @@ void platereader::SeparateCharactersStandardPlate(
 
     	int height = plate_image_height[p];
 
-    	int top_y = 0;
-    	int bottom_y = height-1;
-    	float average_character_height = 0;
-    	VerticalCrop(plate_image_width, height, number_plate, top_y, bottom_y);
+    	float aspect = plate_image_width / (float)height;
 
-    	memset(interval, 0, plate_image_width * sizeof(int));
-    	memset(separate, 0, plate_image_width * sizeof(int));
-
-    	for (int x = 0; x < plate_image_width; x++)
+    	int no_of_segments = 1;
+    	int vertical_separator_y = 0;
+    	if (aspect < 2)
     	{
-    		for (int y = top_y; y <= bottom_y; y++)
+    		no_of_segments = 2;
+
+    		// find the vertical separator
+    		int ty = height * 30 / 100;
+    		int by = height * 70 / 100;
+    		int max_occupancy = 0;
+    		for (int y = ty; y <= by; y++)
     		{
-    		    int n = (y * plate_image_width) + x;
-    		    if (number_plate[n] == 0) interval[x]++;
+    			int occupancy = 0;
+    			for (int x = 0; x < plate_image_width; x++)
+    			{
+    				int n = (y * plate_image_width) + x;
+    				if (number_plate[n] == 0) occupancy++;
+    			}
+    			if (occupancy > max_occupancy)
+    			{
+    				max_occupancy = occupancy;
+    				vertical_separator_y = y;
+    			}
     		}
     	}
 
-    	int* histogram = new int[height+1];
-    	memset(histogram, 0, (height+1) * sizeof(int));
-    	int* histogram_buffer = new int[height+1];
-    	float MeanDark = 0;
-    	float MeanLight = 0;
-    	float DarkRatio = 0;
-    	for (int x = 0; x < plate_image_width; x++) histogram[interval[x]]++;
-    	thresholding::GetGlobalThreshold(histogram, height, 0, histogram_buffer, MeanDark, MeanLight, DarkRatio);
-    	delete[] histogram;
-    	delete[] histogram_buffer;
+		std::vector<unsigned char*> chars;
+		std::vector<int> chars_dimensions;
+		std::vector<int> chars_positions;
+		int initial_chars = 0;
 
-    	int max = (int)(MeanLight * 110/100);
-    	for (int x = 0; x < plate_image_width; x++)
+    	for (int seg = 0; seg < no_of_segments; seg++)
     	{
-    	    if (interval[x] > max) separate[x] = 1;
-    	}
+			int top_y = 0;
+			int bottom_y = height-1;
 
-    	// get the average character width
-    	int prev_x = 0;
-    	float average_character_width = 0;
-    	int hits = 0;
-    	for (int x = 1; x < plate_image_width; x++)
-    	{
-    		int xx = x;
-            if (separate[xx])
-            {
-                if (xx - prev_x > minimum_character_width_pixels)
-                {
-                	average_character_width += xx - prev_x;
-                	hits++;
-                }
-                prev_x = x;
-            }
-    	}
-    	if (hits > 0) average_character_width /= hits;
+			if (no_of_segments > 1)
+			{
+			    if (seg == 0)
+			    {
+				    top_y = 0;
+				    bottom_y = vertical_separator_y+1;
+			    }
+			    else
+			    {
+			    	top_y = vertical_separator_y;
+			    	bottom_y = height-1;
+			    }
+			}
 
-    	// lift and separate
-    	int tx=0,ty=0,bx=0,by=0;
-    	std::vector<unsigned char*> chars;
-    	std::vector<int> chars_dimensions;
-    	prev_x = 0;
-    	for (int x = 1; x < plate_image_width; x++)
-    	{
-    		int xx = x;
-            if ((separate[xx]) || (x == plate_image_width-1))
-            {
-                if (xx - prev_x > minimum_character_width_pixels)
-                {
-                	int character_separator_x = 0;
-                	int number_of_characters = 1;
-                	if ((xx - prev_x > average_character_width * 1.5f) &&
-                		(x != plate_image_width-1))
-                	{
-                		number_of_characters = 2;
+			float average_character_height = 0;
+			float average_character_height_hits = 0;
+			VerticalCrop(plate_image_width, height, number_plate, top_y, bottom_y);
 
-                		// find the separation position
-                		tx = prev_x + ((xx - prev_x) * 20 / 100);
-                		bx = prev_x + ((xx - prev_x) * 80 / 100);
-                		int max_v = 0;
-                		// Australians wouldn't give an xxxx for anything else
-                		for (int xxxx = tx; xxxx < bx; xxxx++)
-                		{
-                			if (interval[xxxx] > max_v)
-                			{
-                				max_v = interval[xxxx];
-                				character_separator_x = xxxx;
-                			}
-                		}
-                	}
+			memset(interval, 0, plate_image_width * sizeof(int));
+			memset(separate, 0, plate_image_width * sizeof(int));
 
-                	for (int c = 0; c < number_of_characters; c++)
-                	{
-					    ty = top_y;
-					    by = bottom_y+1;
-                		if (number_of_characters == 1)
+			for (int x = 0; x < plate_image_width; x++)
+			{
+				for (int y = top_y; y <= bottom_y; y++)
+				{
+					int n = (y * plate_image_width) + x;
+					if (number_plate[n] == 0) interval[x]++;
+				}
+			}
+
+			int* histogram = new int[bottom_y-top_y+2];
+			memset(histogram, 0, (bottom_y-top_y+2) * sizeof(int));
+			int* histogram_buffer = new int[bottom_y-top_y+2];
+			float MeanDark = 0;
+			float MeanLight = 0;
+			float DarkRatio = 0;
+			for (int x = 0; x < plate_image_width; x++) histogram[interval[x]]++;
+			thresholding::GetGlobalThreshold(histogram, bottom_y-top_y+2, 0, histogram_buffer, MeanDark, MeanLight, DarkRatio);
+			delete[] histogram;
+			delete[] histogram_buffer;
+
+			//int max = (int)(MeanLight * 110/100);
+			int max = (int)(MeanLight * 100/100);
+			for (int x = 0; x < plate_image_width; x++)
+			{
+				if (interval[x] > max) separate[x] = 1;
+			}
+
+			// get the average character width
+			int prev_x = 0;
+			float average_character_width = 0;
+			int hits = 0;
+			for (int x = 1; x < plate_image_width; x++)
+			{
+				int xx = x;
+				if (separate[xx])
+				{
+					if (xx - prev_x > minimum_character_width_pixels)
+					{
+						average_character_width += xx - prev_x;
+						hits++;
+					}
+					prev_x = x;
+				}
+			}
+			if (hits > 0) average_character_width /= hits;
+
+			// lift and separate
+			int tx=0,ty=0,bx=0,by=0;
+			prev_x = 0;
+			for (int x = 1; x < plate_image_width; x++)
+			{
+				int xx = x;
+				if ((separate[xx]) || (x == plate_image_width-1))
+				{
+					if (xx - prev_x > minimum_character_width_pixels)
+					{
+						int character_separator_x = 0;
+						int number_of_characters = 1;
+						if ((xx - prev_x > average_character_width * 1.5f) &&
+							(x != plate_image_width-1))
 						{
-                			tx = prev_x;
-						    bx = xx;
-						}
-                		else
-                		{
-                			if (c == 0)
-                			{
-                    			tx = prev_x;
-    						    bx = character_separator_x;
-                			}
-                			else
-                			{
-                    			tx = character_separator_x;
-    						    bx = xx;
-                			}
-                		}
+							number_of_characters = 2;
 
-                		for (int t = 0; t < 2; t++)
-                		    Trim(plate_image_width, height, number_plate, 5, tx, ty, bx, by);
-
-						unsigned char *ch = new unsigned char[(bx-tx)*(by-ty)];
-						int n = 0;
-						for (int yyy = ty; yyy < by; yyy++)
-						{
-							for (int xxx = tx; xxx < bx; xxx++, n++)
+							// find the separation position
+							tx = prev_x + ((xx - prev_x) * 20 / 100);
+							bx = prev_x + ((xx - prev_x) * 80 / 100);
+							int max_v = 0;
+							// Australians wouldn't give an xxxx for anything else
+							for (int xxxx = tx; xxxx < bx; xxxx++)
 							{
-								int n2 = (yyy * plate_image_width) + xxx;
-								ch[n] = number_plate[n2];
+								if (interval[xxxx] > max_v)
+								{
+									max_v = interval[xxxx];
+									character_separator_x = xxxx;
+								}
 							}
 						}
 
-						Erode(bx-tx, by-ty, ch, 50);
+						for (int c = 0; c < number_of_characters; c++)
+						{
+							ty = top_y;
+							by = bottom_y+1;
+							if (number_of_characters == 1)
+							{
+								tx = prev_x;
+								bx = xx;
+							}
+							else
+							{
+								if (c == 0)
+								{
+									tx = prev_x;
+									bx = character_separator_x;
+								}
+								else
+								{
+									tx = character_separator_x;
+									bx = xx;
+								}
+							}
 
-						chars.push_back(ch);
-						chars_dimensions.push_back(bx - tx);
-						chars_dimensions.push_back(by - ty);
-						average_character_height += by - ty;
-                	}
-                }
-                prev_x = x;
-            }
-    	}
+							for (int t = 0; t < 2; t++)
+								Trim(plate_image_width, height, number_plate, 5, tx, ty, bx, by);
 
-    	if ((int)chars.size() > 0) average_character_height /= (int)chars.size();
+							unsigned char *ch = new unsigned char[(bx-tx)*(by-ty)];
+							int n = 0;
+							for (int yyy = ty; yyy < by; yyy++)
+							{
+								for (int xxx = tx; xxx < bx; xxx++, n++)
+								{
+									int n2 = (yyy * plate_image_width) + xxx;
+									ch[n] = number_plate[n2];
+								}
+							}
 
-    	// check character heights
-    	for (int i = 0; i < (int)chars.size(); i++)
-    	{
-    		int wdth = chars_dimensions[i * 2];
-    		int hght = chars_dimensions[(i * 2) + 1];
-    		if (hght > average_character_height*120/100)
-    		{
-    			unsigned char *ch = new unsigned char[wdth*hght];
-    			int n = 0;
-    			for (int y = 0; y < (int)average_character_height; y++)
-    			{
-    				for (int x = 0; x < wdth; x++, n++)
-    				{
-    				    ch[n] = chars[i][n];
-    				}
-    			}
-    			delete[] chars[i];
-    			chars[i] = ch;
-    			chars_dimensions[(i*2)+1] = (int)average_character_height;
-    		}
+							Erode(bx-tx, by-ty, ch, 50);
+
+							chars.push_back(ch);
+							chars_dimensions.push_back(bx - tx);
+							chars_dimensions.push_back(by - ty);
+							chars_positions.push_back(tx + ((bx - tx)/2));
+							chars_positions.push_back(ty + ((by - ty)/2));
+							average_character_height += by - ty;
+							average_character_height_hits++;
+						}
+					}
+					prev_x = x;
+				}
+			}
+
+			if (average_character_height_hits > 0) average_character_height /= average_character_height_hits;
+
+			// check character heights
+			for (int i = initial_chars; i < (int)chars.size(); i++)
+			{
+				int wdth = chars_dimensions[i * 2];
+				int hght = chars_dimensions[(i * 2) + 1];
+				if (hght > average_character_height*120/100)
+				{
+					int px = chars_positions[i*2];
+					int py = chars_positions[(i*2)+1];
+
+					unsigned char *ch1 = new unsigned char[wdth*hght];
+					int n = 0;
+					for (int y = 0; y < (int)average_character_height; y++)
+					{
+						for (int x = 0; x < wdth; x++, n++)
+						{
+							ch1[n] = chars[i][n];
+						}
+					}
+					unsigned char *ch2 = new unsigned char[wdth*hght];
+					n = 0;
+					int n2 = (hght - (int)average_character_height) * wdth;
+					for (int y = 0; y < (int)average_character_height; y++)
+					{
+						for (int x = 0; x < wdth; x++, n++, n2++)
+						{
+							ch2[n] = chars[i][n2];
+						}
+					}
+					delete[] chars[i];
+					chars[i] = ch1;
+					chars_dimensions[(i*2)+1] = (int)average_character_height;
+					chars_positions[(i*2)+1] = py - ((hght - (int)average_character_height)/2);
+					chars.push_back(ch2);
+					chars_dimensions.push_back(wdth);
+					chars_dimensions.push_back((int)average_character_height);
+					chars_positions.push_back(chars_positions[i*2]);
+					chars_positions.push_back(py + ((hght - (int)average_character_height)/2));
+				}
+			}
+
+			initial_chars = (int)chars.size();
+
     	}
 
     	characters.push_back(chars);
     	characters_dimensions.push_back(chars_dimensions);
+    	characters_positions.push_back(chars_positions);
     }
 
     delete[] separate;
