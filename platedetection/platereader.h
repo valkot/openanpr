@@ -40,19 +40,35 @@ public:
 	    int &top_y,
 	    int &bottom_y);
 
-	static void SeparateCharactersStandardPlate(
+	static void SeparateCharacters(
 		float minimum_character_width_percent,
 		int plate_image_width,
 		std::vector<int> plate_image_height,
 	    std::vector<unsigned char*> &binary_images,
 	    std::vector<std::vector<unsigned char*> > &characters,
-	    std::vector<std::vector<int> > &characters_dimensions);
+	    std::vector<std::vector<int> > &characters_dimensions,
+	    std::vector<std::vector<int> > &characters_positions);
 
 	static void Binarise(
 		int plate_image_width,
 		std::vector<int> plate_image_height,
 	    std::vector<unsigned char*> &plate_images,
 	    std::vector<unsigned char*> &binary_images);
+
+	static void Resample(
+		std::vector<int> &character_image_dimensions,
+	    std::vector<unsigned char*> &character_images,
+		int resampled_width,
+		int resampled_height,
+	    std::vector<unsigned char*> &resampled_character_images);
+
+	static void Resample(
+	    int character_image_width,
+		int character_image_height,
+		unsigned char* character_image,
+		int resampled_width,
+		int resampled_height,
+		unsigned char* resampled_character_image);
 
 };
 

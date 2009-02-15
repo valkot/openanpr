@@ -25,6 +25,7 @@
 #include "utils/processimage.h"
 #include "platedetection/platedetection.h"
 #include "platedetection/platereader.h"
+#include "platedetection/anpr.h"
 
 #include "cppunitlite/TestHarness.h"
 
@@ -38,7 +39,7 @@
 
 TEST (FindPlatesTest, MyTest)
 {
-	unsigned char* test_image = raw_image3;
+	unsigned char* test_image = raw_image4;
 
     // image data
     Image image;
@@ -110,18 +111,30 @@ TEST (FindPlatesTest, MyTest)
 	    float minimum_character_width_percent = 2.5f;
 	    std::vector<std::vector<unsigned char*> > characters;
 	    std::vector<std::vector<int> > characters_dimensions;
-	    platereader::SeparateCharactersStandardPlate(
+	    std::vector<std::vector<int> > characters_positions;
+	    platereader::SeparateCharacters(
 	    	minimum_character_width_percent,
 	    	plate_image_width,
 	    	plate_image_height,
 	        binary_images,
 	        characters,
-	        characters_dimensions);
+	        characters_dimensions,
+	        characters_positions);
 
 	    for (int p = 0; p < (int)plates.size(); p++)
 	    {
 	    	std::vector<unsigned char*> chars = characters[p];
 	    	std::vector<int> chars_dimensions = characters_dimensions[p];
+	    	std::vector<unsigned char*> resampled_chars;
+
+	    	// resample to a fixed resolution
+	    	int resampled_width = 20;
+	    	int resampled_height = 20;
+	    	platereader::Resample(chars_dimensions,
+	                 chars,
+	    	         resampled_width,
+	    	         resampled_height,
+	                 resampled_chars);
 
 	    	for (int c = 0; c < (int)chars.size(); c++)
 	    	{
@@ -137,6 +150,23 @@ TEST (FindPlatesTest, MyTest)
 				delete bmp_plate;
 	    	}
 
+	    	for (int c = 0; c < (int)resampled_chars.size(); c++)
+	    	{
+				std::string char_filename = "";
+				std::stringstream s_char_filename;
+				s_char_filename << "plate_" << p << "_char_small" << c << ".ppm";
+				s_char_filename >> char_filename;
+
+				Bitmap *bmp_plate = new Bitmap(resampled_chars[c], resampled_width, resampled_height, 1);
+				bmp_plate->SavePPM(char_filename.c_str());
+				delete bmp_plate;
+	    	}
+
+	    	for (int c = 0; c < (int)resampled_chars.size(); c++)
+	    	{
+	    		delete[] resampled_chars[c];
+	    		resampled_chars[c] = NULL;
+	    	}
 	    	for (int c = 0; c < (int)chars.size(); c++)
 	    	{
 	    		delete[] chars[c];
@@ -888,6 +918,29 @@ TEST (downSampleMonoTest, MyTest)
 
 
 #ifdef TEST_HIGH_LEVEL
+
+TEST (AnprReadTest, MyTest)
+{
+    // image data
+    Image image;
+    image.Width = 640;
+    image.Height = 480;
+    image.Data = raw_image2;
+    image.BytesPerPixel = 3;
+
+    std::vector<polygon2D*> plates;
+    std::vector<std::string> numbers;
+
+    anpr::Read(image.Data, image.Width, image.Height, plates, numbers);
+    CHECK((int)plates.size() > 0);
+
+    for (int i = 0; i < (int)plates.size(); i++)
+    {
+    	delete plates[i];
+    	plates[i] = NULL;
+    }
+}
+
 #endif
 
 #endif
