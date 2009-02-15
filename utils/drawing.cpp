@@ -1,3 +1,22 @@
+/*
+    drawing
+    Copyright (C) 2009 Bob Mottram
+    fuzzgun@gmail.com
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "drawing.h"
 
 // ********** public methods **********
@@ -16,15 +35,15 @@
  * \param line_width
  */
 void drawing::drawBox(
-    unsigned char* img, 
-    int img_width, 
-    int img_height, 
-    int x, 
-    int y, 
-    int radius, 
-    int r, 
-    int g, 
-    int b, 
+    unsigned char* img,
+    int img_width,
+    int img_height,
+    int x,
+    int y,
+    int radius,
+    int r,
+    int g,
+    int b,
     int line_width)
 {
     int radius_y = radius * img_width / img_height;
@@ -40,31 +59,31 @@ void drawing::drawBox(
 
 /*!
  * \brief draw a rotated box
- * \param img 
- * \param img_width 
- * \param img_height 
- * \param x 
- * \param y 
- * \param box_width 
- * \param box_height 
- * \param rotation 
- * \param r 
- * \param g 
- * \param b 
- * \param line_width 
+ * \param img
+ * \param img_width
+ * \param img_height
+ * \param x
+ * \param y
+ * \param box_width
+ * \param box_height
+ * \param rotation
+ * \param r
+ * \param g
+ * \param b
+ * \param line_width
  */
 void drawing::drawBox(
-    unsigned char* img, 
-    int img_width, 
-    int img_height, 
-    int x, 
-    int y, 
-    int box_width, 
-    int box_height, 
-    float rotation, 
-    int r, 
-    int g, 
-    int b, 
+    unsigned char* img,
+    int img_width,
+    int img_height,
+    int x,
+    int y,
+    int box_width,
+    int box_height,
+    float rotation,
+    int r,
+    int g,
+    int b,
     int line_width)
 {
     int tx = -box_width/2;
@@ -116,15 +135,15 @@ void drawing::drawBox(
  * \param line_width width of lines
  */
 void drawing::drawCross(
-    unsigned char* img, 
-    int img_width, 
-    int img_height, 
-    int x, 
-    int y, 
-    int radius, 
-    int r, 
-    int g, 
-    int b, 
+    unsigned char* img,
+    int img_width,
+    int img_height,
+    int x,
+    int y,
+    int radius,
+    int r,
+    int g,
+    int b,
     int line_width)
 {
     int radius_y = radius * img_width / img_height;
@@ -150,15 +169,15 @@ void drawing::drawCross(
  * \param line_width width of the line
  */
 void drawing::drawCircle(
-    unsigned char* img, 
-    int img_width, 
-    int img_height, 
-    int x, 
-    int y, 
-    int radius, 
-    int r, 
-    int g, 
-    int b, 
+    unsigned char* img,
+    int img_width,
+    int img_height,
+    int x,
+    int y,
+    int radius,
+    int r,
+    int g,
+    int b,
     int line_width)
 {
     drawCircle(img, img_width, img_height, (float)x, (float)y, (float)radius, r, g, b, line_width);
@@ -178,15 +197,15 @@ void drawing::drawCircle(
  * \param line_width
  */
 void drawing::drawCircle(
-    unsigned char* img, 
-    int img_width, 
-    int img_height, 
-    float x, 
-    float y, 
-    float radius, 
-    int r, 
-    int g, 
-    int b, 
+    unsigned char* img,
+    int img_width,
+    int img_height,
+    float x,
+    float y,
+    float radius,
+    int r,
+    int g,
+    int b,
     int line_width)
 {
     int points = 20;
@@ -217,14 +236,14 @@ void drawing::drawCircle(
  * \param b
  */
 void drawing::drawSpot(
-    unsigned char* img, 
-    int img_width, 
-    int img_height, 
-    int x, 
-    int y, 
-    int radius, 
-    int r, 
-    int g, 
+    unsigned char* img,
+    int img_width,
+    int img_height,
+    int x,
+    int y,
+    int radius,
+    int r,
+    int g,
     int b)
 {
     for (int rr = 1; rr <= radius; rr++)
@@ -247,19 +266,19 @@ void drawing::drawSpot(
  * \param linewidth line width
  */
 void drawing::drawGrid(
-    unsigned char* img, 
-    int img_width, 
-    int img_height, 
-    int centre_x, 
-    int centre_y, 
-    float rotation, 
-    float size_width, 
-    float size_height, 
-    int columns, 
-    int rows, 
-    int r, 
-    int g, 
-    int b, 
+    unsigned char* img,
+    int img_width,
+    int img_height,
+    int centre_x,
+    int centre_y,
+    float rotation,
+    float size_width,
+    float size_height,
+    int columns,
+    int rows,
+    int r,
+    int g,
+    int b,
     int linewidth)
 {
     // draw the columns
@@ -279,30 +298,30 @@ void drawing::drawGrid(
                 if (grid_y < 0) angle = (float)(PI*2)-angle;
             }
             angle += rotation;
-            
+
             int x = (int)(centre_x + (hyp * sin(angle)));
             int y = (int)(centre_y + (hyp * cos(angle)));
-            
+
             if (row > 0)
             {
                 drawLine(img, img_width, img_height, prev_x, prev_y, x, y,
                          r, g, b, linewidth, false);
             }
-            
+
             prev_x = x;
             prev_y = y;
         }
     }
 
     // draw the rows
-    for (int row = 0; row <= rows; row ++)            
+    for (int row = 0; row <= rows; row ++)
     {
-        float grid_y = ((row * size_height) / (float)rows) - (size_height/2);                
+        float grid_y = ((row * size_height) / (float)rows) - (size_height/2);
         int prev_x = 0;
         int prev_y = 0;
-        for (int col = 0; col <= columns; col += columns)                
+        for (int col = 0; col <= columns; col += columns)
         {
-            float grid_x = ((col * size_width) / (float)columns) - (size_width/2);   
+            float grid_x = ((col * size_width) / (float)columns) - (size_width/2);
             float hyp = (float)sqrt((grid_x*grid_x) + (grid_y*grid_y));
             float angle = 0;
             if (hyp > 0)
@@ -311,16 +330,16 @@ void drawing::drawGrid(
                 if (grid_y < 0) angle = (float)(PI*2)-angle;
             }
             angle += rotation;
-            
+
             int x = (int)(centre_x + (hyp * sin(angle)));
             int y = (int)(centre_y + (hyp * cos(angle)));
-            
+
             if (col > 0)
             {
                 drawLine(img, img_width, img_height, prev_x, prev_y, x, y,
                          r, g, b, linewidth, false);
             }
-            
+
             prev_x = x;
             prev_y = y;
         }
@@ -343,17 +362,17 @@ void drawing::drawGrid(
  * \param linewidth line width
  */
 void drawing::drawLine(
-    unsigned char* img, 
-    int img_width, 
-    int img_height, 
-    int x1, 
-    int y1, 
-    int x2, 
-    int y2, 
-    int r, 
-    int g, 
-    int b, 
-    int linewidth, 
+    unsigned char* img,
+    int img_width,
+    int img_height,
+    int x1,
+    int y1,
+    int x2,
+    int y2,
+    int r,
+    int g,
+    int b,
+    int linewidth,
     bool overwrite)
 {
     //printf("line: (%d,%d)-(%d,%d)\n",x1,y1,x2,y2);
@@ -368,11 +387,11 @@ void drawing::drawLine(
         w = ABS(dx);
         h = ABS(dy);
         if (x2 >= x1) step_x = 1; else step_x = -1;
-        if (y2 >= y1) step_y = 1; else step_y = -1; 
+        if (y2 >= y1) step_y = 1; else step_y = -1;
 
         if ((w < img_width + 2000) && (h < img_height + 2000))
         {
-            
+
             if (w > h)
             {
                 if (dx != 0)

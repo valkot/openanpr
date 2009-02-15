@@ -1,5 +1,5 @@
 /*
-    number plate detection
+    ANPR
     Copyright (C) 2009 Bob Mottram
     fuzzgun@gmail.com
 
@@ -17,11 +17,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PLATEDETECTION_H_
-#define PLATEDETECTION_H_
-
-#define PLATE_YELLOW  0
-#define PLATE_WHITE   1
+#ifndef ANPR_H_
+#define ANPR_H_
 
 #ifndef ABS
 #define ABS(a) (((a) < 0) ? -(a) : (a))
@@ -35,34 +32,17 @@
 #include "../utils/Image.h"
 #include "../utils/polygon.h"
 #include "../shapes/shapes.h"
+#include "platedetection.h"
+#include "platereader.h"
 
-class platedetection
-{
+class anpr {
 public:
-	static void MergeRectangles(std::vector<polygon2D*> &rectangles);
-
-	static void ColourFilter(
+	static void Read(
 	    unsigned char* img_colour,
-	    int img_width, int img_height,
-	    unsigned char* filtered);
-
-	static bool Find(
-		    unsigned char *img_colour,
-		    int img_width, int img_height,
-		    std::vector<polygon2D*> &plates,
-		    bool debug,
-		    std::vector<unsigned char*> &debug_images,
-			int &debug_image_width,
-			int &debug_image_height);
-
-	static void ExtractPlateImages(
-	    unsigned char *img_colour,
-	    int img_width, int img_height,
+	    int img_width,
+	    int img_height,
 	    std::vector<polygon2D*> &plates,
-	    int plate_image_width,
-	    std::vector<int> &plate_image_height,
-	    std::vector<unsigned char*> &plate_images);
-
+	    std::vector<std::string> &numbers);
 };
 
-#endif /* PLATEDETECTION_H_ */
+#endif /* ANPR_H_ */
