@@ -8,8 +8,8 @@ void platereader::Erode(
     int minimum_occupancy_percent)
 {
 	unsigned char* eroded = new unsigned char[character_image_width * character_image_height];
-	unsigned char* buffer = new unsigned char[character_image_width * character_image_height];
-	unsigned char* result = new unsigned char[character_image_width * character_image_height];
+	unsigned char* buffer = NULL;
+	unsigned char* result = NULL;
 	memcpy(eroded, character_image, character_image_width * character_image_height * sizeof(unsigned char));
 
 	bool finished = false;
@@ -21,15 +21,20 @@ void platereader::Erode(
 
 		if (occupancy * 100 / (character_image_width * character_image_height) > minimum_occupancy_percent)
 		{
-		   processimage::Erode(eroded, character_image_width, character_image_height, buffer, 1, result);
-		   memcpy(eroded, result, character_image_width * character_image_height * sizeof(unsigned char));
+		    if (buffer == NULL)
+			{
+			    buffer = new unsigned char[character_image_width * character_image_height];
+			    result = new unsigned char[character_image_width * character_image_height];
+		    }
+		    processimage::Erode(eroded, character_image_width, character_image_height, buffer, 1, result);
+		    memcpy(eroded, result, character_image_width * character_image_height * sizeof(unsigned char));
 		}
 		else finished = true;
 	}
 
 	memcpy(character_image, eroded, character_image_width * character_image_height * sizeof(unsigned char));
-	delete[] result;
-	delete[] buffer;
+	if (result != NULL) delete[] result;
+	if (buffer != NULL) delete[] buffer;
 	delete[] eroded;
 }
 
