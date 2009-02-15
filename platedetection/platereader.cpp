@@ -2,7 +2,7 @@
 #include "platereader.h"
 
 void platereader::SeparateCharactersStandardPlate(
-	float expected_character_width_percent,
+	float minimum_character_width_percent,
 	int plate_image_width,
 	std::vector<int> plate_image_height,
     std::vector<unsigned char*> &binary_images,
@@ -10,13 +10,15 @@ void platereader::SeparateCharactersStandardPlate(
     std::vector<std::vector<int> > &characters_dimensions)
 {
 	int* interval = new int[plate_image_width];
-	int suppression_radius = (int)(plate_image_width * expected_character_width_percent / 200);
+	int* separate = new int[plate_image_width];
+	int minimum_character_width_pixels = (int)(plate_image_width * minimum_character_width_percent / 100);
 
     for (int p = 0; p < (int)binary_images.size(); p++)
     {
     	unsigned char* number_plate = binary_images[p];
 
     	memset(interval, 0, plate_image_width * sizeof(int));
+    	memset(separate, 0, plate_image_width * sizeof(int));
 
     	int height = plate_image_height[p];
     	for (int x = 0; x < plate_image_width; x++)
@@ -28,56 +30,59 @@ void platereader::SeparateCharactersStandardPlate(
     		}
     	}
 
-    	// remove below average data
-    	float average_interval = 0;
-    	for (int x = 0; x < plate_image_width; x++)
-    	    average_interval += interval[x];
-    	average_interval /= plate_image_width;
-    	for (int x = 0; x < plate_image_width; x++)
-    	    if (interval[x] < average_interval) interval[x] = 0;
+    	int* histogram = new int[height+1];
+    	memset(histogram, 0, (height+1) * sizeof(int));
+    	int* histogram_buffer = new int[height+1];
+    	float MeanDark = 0;
+    	float MeanLight = 0;
+    	float DarkRatio = 0;
+    	for (int x = 0; x < plate_image_width; x++) histogram[interval[x]]++;
+    	thresholding::GetGlobalThreshold(histogram, height, 0, histogram_buffer, MeanDark, MeanLight, DarkRatio);
+    	delete[] histogram;
+    	delete[] histogram_buffer;
 
-        // non-maximal suppression
+    	int max = (int)(MeanLight * 110/100);
     	for (int x = 0; x < plate_image_width; x++)
     	{
-        	for (int x2 = x + 1; x2 < x + suppression_radius; x2++)
-        	{
-        		if (interval[x2] < interval[x])
-        		{
-        			interval[x2] = 0;
-        		}
-        		else
-        		{
-        		    interval[x] = 0;
-        		    break;
-        		}
-        	}
+    	    if (interval[x] > max) separate[x] = 1;
     	}
+
+    	// get the average character width
+    	int prev_x = 0;
+    	/*
+    	float average_character_width = 0;
+    	int hits = 0;
+    	for (int x = 1; x < plate_image_width; x++)
+    	{
+    		int xx = x;
+            if (separate[xx])
+            {
+                if (xx - prev_x > minimum_character_width_pixels)
+                {
+                	average_character_width += xx - prev_x;
+                	hits++;
+                }
+                prev_x = x;
+            }
+    	}
+    	if (hits > 0) average_character_width /= hits;
+    	*/
 
     	// lift and separate
     	std::vector<unsigned char*> chars;
     	std::vector<int> chars_dimensions;
-    	int prev_x = 0;
-    	for (int x = 0; x < plate_image_width; x++)
+    	prev_x = 0;
+    	for (int x = 1; x < plate_image_width; x++)
     	{
     		int xx = x;
-            if ((interval[xx] > 0) || (xx == plate_image_width - 1))
+            if (separate[xx])
             {
-            	if (xx - prev_x > suppression_radius * 2)
-            	{
-            	    prev_x = xx - (suppression_radius * 2);
-            	}
-            	if (xx == plate_image_width - 1)
-            	{
-            		xx = prev_x + (suppression_radius * 2);
-            		if (xx >= plate_image_width) xx = plate_image_width - 1;
-            	}
-
-                if (xx - prev_x > suppression_radius)
+                if (xx - prev_x > minimum_character_width_pixels)
                 {
                     int tx = prev_x;
                     int ty = 0;
                     int bx = xx;
-                    int by = plate_image_height[p];
+                    int by = height;
 
                     unsigned char *ch = new unsigned char[(bx-tx)*(by-ty)];
                     int n = 0;
@@ -93,6 +98,7 @@ void platereader::SeparateCharactersStandardPlate(
                     chars_dimensions.push_back(bx - tx);
                     chars_dimensions.push_back(by - ty);
                 }
+                prev_x = x;
             }
     	}
 
@@ -100,6 +106,7 @@ void platereader::SeparateCharactersStandardPlate(
     	characters_dimensions.push_back(chars_dimensions);
     }
 
+    delete[] separate;
     delete[] interval;
 }
 

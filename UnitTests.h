@@ -38,7 +38,7 @@
 
 TEST (FindPlatesTest, MyTest)
 {
-	unsigned char* test_image = raw_image1;
+	unsigned char* test_image = raw_image4;
 
     // image data
     Image image;
@@ -107,11 +107,11 @@ TEST (FindPlatesTest, MyTest)
 	        plate_images,
 	        binary_images);
 
-	    float expected_character_width_percent = 15;
+	    float minimum_character_width_percent = 2.5f;
 	    std::vector<std::vector<unsigned char*> > characters;
 	    std::vector<std::vector<int> > characters_dimensions;
 	    platereader::SeparateCharactersStandardPlate(
-	    	expected_character_width_percent,
+	    	minimum_character_width_percent,
 	    	plate_image_width,
 	    	plate_image_height,
 	        binary_images,
@@ -135,6 +135,12 @@ TEST (FindPlatesTest, MyTest)
 				Bitmap *bmp_plate = new Bitmap(chars[c], char_image_width, char_image_height, 1);
 				bmp_plate->SavePPM(char_filename.c_str());
 				delete bmp_plate;
+	    	}
+
+	    	for (int c = 0; c < (int)chars.size(); c++)
+	    	{
+	    		delete[] chars[c];
+	    		chars[c] = NULL;
 	    	}
 	    }
 
@@ -163,6 +169,7 @@ TEST (FindPlatesTest, MyTest)
     Bitmap *bmp = new Bitmap(rectangles_img, image.Width, image.Height, 3);
     bmp->SavePPM("number_plates.ppm");
 
+
     for (int i = 0; i < (int)plates.size(); i++)
     {
     	delete plates[i];
@@ -171,13 +178,13 @@ TEST (FindPlatesTest, MyTest)
 
     for (int i = 0; i < (int)plate_images.size(); i++)
     {
-    	delete plate_images[i];
+    	delete[] plate_images[i];
     	plate_images[i] = NULL;
     }
 
     for (int i = 0; i < (int)binary_images.size(); i++)
     {
-    	delete binary_images[i];
+    	delete[] binary_images[i];
     	binary_images[i] = NULL;
     }
 
@@ -327,6 +334,12 @@ TEST (rectanglesTest, MyTest)
     bmp = new Bitmap(mono_img, image.Width, image.Height, 1);
     bmp->SavePPM("mono.ppm");
     delete bmp;
+
+    for (int i = 0; i < (int)rectangles.size(); i++)
+    {
+    	delete rectangles[i];
+    	rectangles[i] = NULL;
+    }
 
     delete[] rectangles_img;
 	delete edge_detector;

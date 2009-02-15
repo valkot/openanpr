@@ -18,7 +18,7 @@ class platereader
 {
 public:
 	static void SeparateCharactersStandardPlate(
-		float expected_character_width_percent,
+		float minimum_character_width_percent,
 		int plate_image_width,
 		std::vector<int> plate_image_height,
 	    std::vector<unsigned char*> &binary_images,

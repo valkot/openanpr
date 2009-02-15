@@ -163,9 +163,6 @@ void platedetection::ExtractPlateImages(
 {
 	int pixels = (img_width * img_height * 3) - 3;
 
-	polygon2D* number_plate = new polygon2D();
-	for (int vertex = 0; vertex < 4; vertex++) number_plate->Add(0, 0);
-
 	for (int p = 0; p < (int)plates.size(); p++)
 	{
 		polygon2D* number_plate = plates[p];

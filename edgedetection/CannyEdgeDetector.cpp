@@ -336,9 +336,6 @@ int CannyEdgeDetector::ComputeGradients(float kernelRadius, unsigned int kernelW
     int w = image.Width;
 
 	// Perform convolution in x and y directions
-    #ifdef _OPENMP
-        #pragma omp parallel for
-    #endif
 	for(int y = initY; y < maxY; y+= w)
 	{
 		for(int x = initX; x < maxX; x++)
@@ -369,9 +366,6 @@ int CannyEdgeDetector::ComputeGradients(float kernelRadius, unsigned int kernelW
 	}
 
 	float *kern = diffKernel.Data;
-    #ifdef _OPENMP
-        #pragma omp parallel for
-    #endif
 	for(int x = initX; x < maxX; x++)
 	{
 		for(int y = initY; y < maxY; y += w)
@@ -387,9 +381,6 @@ int CannyEdgeDetector::ComputeGradients(float kernelRadius, unsigned int kernelW
 		}
 	}
 
-    #ifdef _OPENMP
-        #pragma omp parallel for
-    #endif
 	for(unsigned int x = kwidth; x < w - kwidth; x++)
 	{
 		for (int y = initY; y < maxY; y += w)
