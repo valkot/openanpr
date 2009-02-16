@@ -19,6 +19,8 @@
 
 #include "platereader.h"
 
+
+
 void platereader::RemoveStragglers(
     std::vector<int> &character_image_dimensions,
     std::vector<int> &character_positions,

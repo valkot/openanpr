@@ -34,15 +34,51 @@
 #include "../shapes/shapes.h"
 #include "platedetection.h"
 #include "platereader.h"
+#include "ocr.h"
 
 class anpr {
+private:
+	static void GetFilesInDirectory(
+	    std::string dir,
+	    std::vector<std::string> &filenames);
+
 public:
+	static void ReadDirectory(
+	    std::string directory,
+	    std::vector<std::string> &numbers,
+	    bool save_characters,
+        int model_image_width,
+        int model_image_height,
+        std::vector<float*> &models,
+        float* average_model);
+
+	static void ReadFile(
+	    std::string filename,
+		std::vector<polygon2D*> &plates,
+	    std::vector<std::string> &numbers,
+	    bool save_characters,
+	    int &character_index,
+	    int model_image_width,
+	    int model_image_height,
+	    std::vector<float*> &models,
+	    float* average_model,
+	    std::string plates_filename,
+	    std::string filtered_image_filename);
+
 	static void Read(
 	    unsigned char* img_colour,
 	    int img_width,
 	    int img_height,
 	    std::vector<polygon2D*> &plates,
-	    std::vector<std::string> &numbers);
+	    std::vector<std::string> &numbers,
+	    bool save_characters,
+	    int &character_index,
+	    int model_image_width,
+	    int model_image_height,
+	    std::vector<float*> &models,
+	    float* average_model,
+	    std::string filtered_image_filename);
+
 };
 
 #endif /* ANPR_H_ */

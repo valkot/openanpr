@@ -253,6 +253,7 @@ bool Bitmap::FromFile(std::string filename)
 
 						if (bpp == 24)
 						{
+							/*
 							for (int i = 0; i < (int)size; i += bytes_per_pixel)
 							{
 								// bgr -> rgb
@@ -260,6 +261,7 @@ bool Bitmap::FromFile(std::string filename)
 								Data[i] = Data[i+2];
 								Data[i+2] = temp;
 							}
+							*/
 						}
 
 						if (bpp == 32)
