@@ -37,6 +37,7 @@
 #include "cppunitlite/TestResultStdErr.h"
 #include "UnitTests.h"
 #include "utils/bitmap.h"
+#include "platedetection/ocr.h"
 
 using namespace std;
 
@@ -216,6 +217,9 @@ void Run( int argc, char* argv[], float VERSION )
     opt->addUsage( "     --maxvol <value>       Maximum volume of the license plate as a % of the image " );
     opt->addUsage( "     --test                 Run unit tests " );
     opt->addUsage( "     --debug                Save debugging info " );
+    opt->addUsage( " -c  --chars                Save characters " );
+    opt->addUsage( " -m  --model <filename>     Use the given character model " );
+    opt->addUsage( " -l  --learn <directory>    Learn character model " );
     opt->addUsage( " -v  --version              Shows the version number " );
     opt->addUsage( "" );
 
@@ -226,6 +230,9 @@ void Run( int argc, char* argv[], float VERSION )
     opt->setOption(  "maxvol" );        // maximum volume of the license plate as a percent of the image volume
     opt->setFlag(  "test", 't' );       // a flag (takes no argument) used to run unit tests
     opt->setFlag(  "debug" );           // a flag (takes no argument) used to save debugging images
+    opt->setFlag(  "chars", 'c' );
+    opt->setOption(  "model", 'm' );
+    opt->setOption(  "learn", 'l' );
     opt->setFlag(  "version", 'v' );
 
     opt->processCommandArgs(argc, argv);
@@ -242,6 +249,12 @@ void Run( int argc, char* argv[], float VERSION )
     {
         printf("Version %f\n", VERSION);
         return;
+    }
+
+    bool save_characters = false;
+    if( opt->getFlag( "chars" ) || opt->getFlag( 'c' ) )
+    {
+    	save_characters = true;
     }
 
     if( opt->getFlag( "help" ) || opt->getFlag( 'h' ) )
@@ -267,43 +280,80 @@ void Run( int argc, char* argv[], float VERSION )
         if (maximum_volume_percent > 100) maximum_volume_percent = 100;
     }
 
+	int model_image_width = 20;
+	int model_image_height = 20;
+    float* average_model = new float[model_image_width * model_image_height];
+	std::vector<float*> models;
+
+    if( opt->getValue( "model" ) != NULL || opt->getValue( 'm' ) != NULL  )
+    {
+    	std::string filename = opt->getValue("model");
+    	ocr::LoadCharacterModels(filename, model_image_width, model_image_height, models, average_model);
+    }
+
+    if( opt->getValue( "learn" ) != NULL || opt->getValue( 'l' ) != NULL  )
+    {
+    	std::string directory = opt->getValue("learn");
+    	std::vector<std::string> numbers;
+
+    	ocr::CreateCharacterModels(directory, model_image_width, model_image_height, models);
+    	if ((int)models.size() == 36)
+    	{
+    	    ocr::CreateCharacterEigenModels(model_image_width,model_image_height,models, average_model);
+    	    ocr::SaveCharacterModels("model.dat", model_image_width, model_image_height, models, average_model);
+
+    	    cout << "Model saved: " << endl;
+    	}
+    	else
+    	{
+    		cout << "Incorrect number of models: " << (int)models.size() << endl;
+    	}
+    }
+
     if( opt->getValue( 'f' ) != NULL  || opt->getValue( "filename" ) != NULL  )
     {
+
     	std::string filename = opt->getValue('f');
 
-    	cout << "Filename: " << filename;
+    	//cout << "filename: " << filename << endl;
+    	std::vector<std::string> numbers;
+    	std::vector<polygon2D*> plates;
 
-        Detect(filename,
-               minimum_volume_percent, maximum_volume_percent,
-               debug);
+    	int character_index = 0;
+    	anpr::ReadFile(
+    	    filename,
+    		plates,
+    	    numbers,
+    	    save_characters,
+    	    character_index,
+    	    model_image_width,
+    	    model_image_height,
+    	    models,
+    	    average_model,
+    	    "number_plates.ppm",
+    	    "filtered_image.ppm");
+
+    	for (int i = 0; i < (int)plates.size(); i++)
+    	{
+    		delete plates[i];
+    		plates[i] = NULL;
+    	}
     }
+
 
     if( opt->getValue( "dir" ) != NULL || opt->getValue( 'd' ) != NULL  )
     {
-    	int detections = 0;
     	std::string directory = opt->getValue("dir");
-    	std::vector<std::string> filenames;
-    	GetFilesInDirectory(directory, filenames);
-    	for (int i = 0; i < (int)filenames.size(); i++)
-    	{
-    		cout << "Filename: " << filenames[i] << "...";
-
-  		    std::string filename = directory + "/" + filenames[i];
-			std::string license_plate_text =
-				Detect(filename,
-				       minimum_volume_percent, maximum_volume_percent,
-				       debug);
-			if (license_plate_text != "") detections++;
-    	}
-    	if ((int)filenames.size() > 0)
-    	{
-    		float percent_detected = (int)(detections * 1000 / (float)filenames.size()) / 10.0f;
-    		cout << detections << " plates detected out of " << filenames.size() << endl;
-    		cout << "Percent detected: " << percent_detected << endl;
-    	}
-
+    	std::vector<std::string> numbers;
+    	anpr::ReadDirectory(directory, numbers, save_characters, model_image_width, model_image_height, models, average_model);
     }
 
+    for (int i = 0; i < (int)models.size(); i++)
+    {
+    	delete[] models[i];
+    	models[i] = NULL;
+    }
+    delete[] average_model;
     delete opt;
 }
 
@@ -311,10 +361,10 @@ int main( int argc, char* argv[] )
 {
     const float VERSION = 0.01f;
 
-    //Run(argc, argv, VERSION);
+    Run(argc, argv, VERSION);
 
     // Uncomment this if you want to run valgrind on the unit tests
-    RunUnitTests();
+    //RunUnitTests();
 
     return EXIT_SUCCESS;
 }

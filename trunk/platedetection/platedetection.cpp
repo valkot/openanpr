@@ -251,7 +251,8 @@ bool platedetection::Find(
     bool debug,
     std::vector<unsigned char*> &debug_images,
 	int &debug_image_width,
-	int &debug_image_height)
+	int &debug_image_height,
+	std::string filtered_image_filename)
 {
     bool found = false;
 
@@ -265,6 +266,13 @@ bool platedetection::Find(
 
 	// apply colour filters
 	platedetection::ColourFilter(img_colour, img_width, img_height, filtered);
+
+	if (filtered_image_filename != "")
+	{
+        Bitmap* bmp = new Bitmap(filtered, img_width, img_height, 3);
+        bmp->SavePPM(filtered_image_filename.c_str());
+        delete bmp;
+	}
 
 	for (int plate_colour = PLATE_YELLOW; plate_colour <= PLATE_WHITE; plate_colour++)
 	{

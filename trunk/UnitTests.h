@@ -80,7 +80,8 @@ TEST (FindPlatesTest, MyTest)
         debug,
         debug_images,
         debug_image_width,
-        debug_image_height);
+        debug_image_height,
+        "");
 
     CHECK(plates_found == true);
 
@@ -956,7 +957,24 @@ TEST (AnprReadTest, MyTest)
     std::vector<polygon2D*> plates;
     std::vector<std::string> numbers;
 
-    anpr::Read(image.Data, image.Width, image.Height, plates, numbers);
+    int model_image_width = 20;
+    int model_image_height = 20;
+    std::vector<float*> models;
+    float* average_model = new float[model_image_width * model_image_height];
+
+    int character_index = 0;
+    anpr::Read(image.Data,
+    		   image.Width,
+    		   image.Height,
+    		   plates,
+    		   numbers,
+    		   false,
+    		   character_index,
+    	       model_image_width,
+    	       model_image_height,
+    	       models,
+    	       average_model,
+    	       "filtered_image.ppm");
     CHECK((int)plates.size() > 0);
 
     for (int i = 0; i < (int)plates.size(); i++)
@@ -964,6 +982,12 @@ TEST (AnprReadTest, MyTest)
     	delete plates[i];
     	plates[i] = NULL;
     }
+    for (int i = 0; i < (int)models.size(); i++)
+    {
+    	delete[] models[i];
+    	models[i] = NULL;
+    }
+    delete[] average_model;
 }
 
 #endif

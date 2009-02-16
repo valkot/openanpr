@@ -24,6 +24,11 @@
 #define ABS(a) (((a) < 0) ? -(a) : (a))
 #endif
 
+#include <algorithm>
+#include <iostream>
+#include <sstream>
+#include <dirent.h>
+
 #include <math.h>
 #include <string>
 #include <cstdlib>
@@ -35,7 +40,10 @@
 
 class platereader
 {
+private:
+
 public:
+
 	static void RemoveStragglers(
 	    std::vector<int> &character_image_dimensions,
 	    std::vector<int> &character_positions,

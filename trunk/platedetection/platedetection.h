@@ -53,7 +53,8 @@ public:
 		    bool debug,
 		    std::vector<unsigned char*> &debug_images,
 			int &debug_image_width,
-			int &debug_image_height);
+			int &debug_image_height,
+			std::string filtered_image_filename);
 
 	static void ExtractPlateImages(
 	    unsigned char *img_colour,
